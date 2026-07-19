@@ -1,0 +1,7 @@
+node_modules/
+dist/
+app.zip
+Mana Resonance.exe
+ManaResonanceSetup.exe
+*.log
+.gemini/
