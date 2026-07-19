@@ -122,9 +122,14 @@ let ctxPitchTracker = null;
 let ctxSpectrum = null;
 let ctxParticles = null;
 let scrollPitchHistory = [];
-const MAX_PITCH_HISTORY = 250;
 let spectrogramHistory = [];
-const MAX_SPEC_HISTORY = 180;
+const MAC_MAX_HISTORY = 200; // Windows版と同じ速度で流れるように同期
+
+// Windows用オフスクリーン描画バッファ
+let winSpectrogramBuffer = null;
+let winSpectroCtx = null;
+let winPitchTrackerBuffer = null;
+let winPitchCtx = null;
 let lastTime = performance.now();
 let frameCount = 0;
 
@@ -957,53 +962,52 @@ function detectVibrato() {
   }
 }
 
+const isMac = navigator.userAgent.toLowerCase().includes('mac');
+
+// --- Spectrogram (Companion Perspective) ---
 function drawSpectrogram() {
+  if (isMac) {
+    drawSpectrogramMac();
+  } else {
+    drawSpectrogramWin();
+  }
+}
+
+function drawSpectrogramMac() {
   if (!spectrumAnalyser || !ctxSpectrogram) return;
 
   const cssWidth = canvasSpectrogram.clientWidth;
   const cssHeight = canvasSpectrogram.clientHeight;
   const dpr = window.devicePixelRatio || 1;
 
-  // DPRトランスフォームを毎フレーム明示的に設定 (メインCanvasのDPR変換)
   ctxSpectrogram.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-  // キャンバスをクリア (残像や引き伸ばしを100%防止)
   ctxSpectrogram.fillStyle = '#020205';
   ctxSpectrogram.fillRect(0, 0, cssWidth, cssHeight);
 
-  // 最新スペクトルデータを取得
   const data = new Uint8Array(spectrumAnalyser.frequencyBinCount);
   spectrumAnalyser.getByteFrequencyData(data);
 
-  // MIDIノート 36(C2: 65Hz) から 96(C7: 2093Hz) までのマッピング
   const minMidi = 36;
   const maxMidi = 96;
   const sampleRate = audioCtx.sampleRate;
   const totalBins = spectrumAnalyser.frequencyBinCount;
 
-  // 1列分のエネルギーデータを格納する配列
   const frameEnergy = new Uint8Array(cssHeight);
   for (let y = 0; y < cssHeight; y++) {
-    // 画面の高さに対するMIDIノート番号の補間（下ほど低音）
-    const normY = 1.0 - (y / cssHeight); // 0〜1
+    const normY = 1.0 - (y / cssHeight);
     const midiNote = minMidi + normY * (maxMidi - minMidi);
-    
-    // 周波数を算出
     const targetFreq = 440 * Math.pow(2, (midiNote - 69) / 12);
-    
-    // 周波数からFFTのビンインデックスをマッピング
     const binIdx = Math.round((targetFreq * totalBins * 2) / sampleRate);
     frameEnergy[y] = binIdx < data.length ? data[binIdx] : 0;
   }
 
-  // 履歴配列に追加
   spectrogramHistory.push(frameEnergy);
-  if (spectrogramHistory.length > MAX_SPEC_HISTORY) {
+  if (spectrogramHistory.length > MAC_MAX_HISTORY) {
     spectrogramHistory.shift();
   }
 
-  // 履歴配列からX列分の縦線を左から右に向かって描画
-  const colWidth = cssWidth / MAX_SPEC_HISTORY;
+  const colWidth = cssWidth / MAC_MAX_HISTORY;
   for (let i = 0; i < spectrogramHistory.length; i++) {
     const energies = spectrogramHistory[i];
     const x = i * colWidth;
@@ -1019,57 +1023,117 @@ function drawSpectrogram() {
       const a = 0.15 + normEnergy * 0.8;
 
       ctxSpectrogram.fillStyle = `rgba(${r}, ${g}, ${b}, ${a})`;
-      ctxSpectrogram.fillRect(x, y, colWidth + 0.5, 1.2); // 隙間埋めのため幅に+0.5px
+      ctxSpectrogram.fillRect(x, y, colWidth + 0.5, 1.2);
     }
   }
 }
 
+function drawSpectrogramWin() {
+  if (!spectrumAnalyser || !ctxSpectrogram) return;
+
+  const width = canvasSpectrogram.clientWidth;
+  const height = canvasSpectrogram.clientHeight;
+
+  if (!winSpectrogramBuffer || winSpectrogramBuffer.width !== width || winSpectrogramBuffer.height !== height) {
+    winSpectrogramBuffer = document.createElement('canvas');
+    winSpectrogramBuffer.width = width;
+    winSpectrogramBuffer.height = height;
+    winSpectroCtx = winSpectrogramBuffer.getContext('2d');
+    winSpectroCtx.fillStyle = '#020205';
+    winSpectroCtx.fillRect(0, 0, width, height);
+  }
+
+  // Windows: スムーズな自己複製スクロール
+  winSpectroCtx.drawImage(winSpectrogramBuffer, -1.5, 0);
+
+  const data = new Uint8Array(spectrumAnalyser.frequencyBinCount);
+  spectrumAnalyser.getByteFrequencyData(data);
+
+  const minMidi = 36;
+  const maxMidi = 96;
+  const x = width - 1.5;
+  const sampleRate = audioCtx.sampleRate;
+  const totalBins = spectrumAnalyser.frequencyBinCount;
+
+  for (let y = 0; y < height; y++) {
+    const normY = 1.0 - (y / height);
+    const midiNote = minMidi + normY * (maxMidi - minMidi);
+    const targetFreq = 440 * Math.pow(2, (midiNote - 69) / 12);
+    const binIdx = Math.round((targetFreq * totalBins * 2) / sampleRate);
+    const energy = binIdx < data.length ? data[binIdx] : 0;
+
+    let color;
+    if (energy > 0) {
+      const normEnergy = energy / 255;
+      const r = Math.round(6 + normEnergy * 230);
+      const g = Math.round(18 + normEnergy * 54);
+      const b = Math.round(50 + normEnergy * 103);
+      const a = 0.15 + normEnergy * 0.8;
+      color = `rgba(${r}, ${g}, ${b}, ${a})`;
+    } else {
+      color = 'rgba(2, 2, 5, 1)';
+    }
+
+    winSpectroCtx.fillStyle = color;
+    winSpectroCtx.fillRect(x, y, 1.5, 1.2);
+  }
+
+  ctxSpectrogram.clearRect(0, 0, width, height);
+  ctxSpectrogram.drawImage(winSpectrogramBuffer, 0, 0);
+}
+
+
+// --- Pitch Tracker (Vocal Pitch Tracker) ---
 function drawPitchTracker() {
+  if (isMac) {
+    drawPitchTrackerMac();
+  } else {
+    drawPitchTrackerWin();
+  }
+}
+
+function drawPitchTrackerMac() {
   if (!ctxPitchTracker) return;
 
   const cssWidth = canvasPitchTracker.clientWidth;
   const cssHeight = canvasPitchTracker.clientHeight;
   const dpr = window.devicePixelRatio || 1;
 
-  // メインCanvasのDPR設定
   ctxPitchTracker.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-  // キャンバスをクリア
   ctxPitchTracker.fillStyle = '#020205';
   ctxPitchTracker.fillRect(0, 0, cssWidth, cssHeight);
 
-  // 履歴配列に最新ピッチを追加 (音がないフレームは0)
   scrollPitchHistory.push(lastValidF0 > 0 ? lastValidF0 : 0);
-  if (scrollPitchHistory.length > MAX_PITCH_HISTORY) {
+  if (scrollPitchHistory.length > MAC_MAX_HISTORY) {
     scrollPitchHistory.shift();
   }
 
   const minMidi = 36;
   const maxMidi = 96;
 
-  // 履歴配列の全ドットを左から右へ描画 (自動スクロール)
+  const dotXRatio = cssWidth / MAC_MAX_HISTORY;
   for (let i = 0; i < scrollPitchHistory.length; i++) {
     const f0 = scrollPitchHistory[i];
-    if (f0 <= 0) continue; // 音がない箇所は描画スキップ
+    if (f0 <= 0) continue;
 
     const midiNoteNum = 12 * Math.log2(f0 / 440) + 69;
     if (midiNoteNum >= minMidi && midiNoteNum <= maxMidi) {
       const normY = (midiNoteNum - minMidi) / (maxMidi - minMidi);
       const dotY = cssHeight - (normY * cssHeight);
-      const dotX = (i / MAX_PITCH_HISTORY) * cssWidth;
+      const dotX = i * dotXRatio;
 
       ctxPitchTracker.beginPath();
-      ctxPitchTracker.arc(dotX, dotY, 2, 0, 2 * Math.PI); // 半径2
-      ctxPitchTracker.fillStyle = '#22c55e'; // 鮮やかなグリーン
+      ctxPitchTracker.arc(dotX, dotY, 2, 0, 2 * Math.PI);
+      ctxPitchTracker.fillStyle = '#22c55e';
       ctxPitchTracker.shadowColor = '#22c55e';
       ctxPitchTracker.shadowBlur = 4;
       ctxPitchTracker.fill();
-      ctxPitchTracker.shadowBlur = 0; // シャドウをリセット
+      ctxPitchTracker.shadowBlur = 0;
     }
   }
 
-  // 固定のピッチレンジガイドライン（C2〜C7）を描画
-  const guideMidis = [36, 48, 60, 72, 84, 96]; // C2, C3, C4, C5, C6, C7
+  const guideMidis = [36, 48, 60, 72, 84, 96];
   ctxPitchTracker.strokeStyle = 'rgba(255, 255, 255, 0.04)';
   ctxPitchTracker.lineWidth = 1;
   guideMidis.forEach(midi => {
@@ -1078,6 +1142,64 @@ function drawPitchTracker() {
     ctxPitchTracker.beginPath();
     ctxPitchTracker.moveTo(0, y);
     ctxPitchTracker.lineTo(cssWidth, y);
+    ctxPitchTracker.stroke();
+  });
+}
+
+function drawPitchTrackerWin() {
+  if (!ctxPitchTracker) return;
+
+  const width = canvasPitchTracker.clientWidth;
+  const height = canvasPitchTracker.clientHeight;
+
+  if (!winPitchTrackerBuffer || winPitchTrackerBuffer.width !== width || winPitchTrackerBuffer.height !== height) {
+    winPitchTrackerBuffer = document.createElement('canvas');
+    winPitchTrackerBuffer.width = width;
+    winPitchTrackerBuffer.height = height;
+    winPitchCtx = winPitchTrackerBuffer.getContext('2d');
+    winPitchCtx.fillStyle = '#020205';
+    winPitchCtx.fillRect(0, 0, width, height);
+  }
+
+  // Windows: スムーズな自己複製スクロール
+  winPitchCtx.drawImage(winPitchTrackerBuffer, -1.5, 0);
+
+  const x = width - 1.5;
+  winPitchCtx.fillStyle = '#020205';
+  winPitchCtx.fillRect(x, 0, 1.5, height);
+
+  const minMidi = 36;
+  const maxMidi = 96;
+
+  if (lastValidF0 > 0) {
+    const midiNoteNum = 12 * Math.log2(lastValidF0 / 440) + 69;
+    if (midiNoteNum >= minMidi && midiNoteNum <= maxMidi) {
+      const normY = (midiNoteNum - minMidi) / (maxMidi - minMidi);
+      const dotY = height - (normY * height);
+      const currentX = width - 1;
+
+      winPitchCtx.beginPath();
+      winPitchCtx.arc(currentX, dotY, 2, 0, 2 * Math.PI);
+      winPitchCtx.fillStyle = '#22c55e';
+      winPitchCtx.shadowColor = '#22c55e';
+      winPitchCtx.shadowBlur = 4;
+      winPitchCtx.fill();
+      winPitchCtx.shadowBlur = 0;
+    }
+  }
+
+  ctxPitchTracker.clearRect(0, 0, width, height);
+  ctxPitchTracker.drawImage(winPitchTrackerBuffer, 0, 0);
+
+  const guideMidis = [36, 48, 60, 72, 84, 96];
+  ctxPitchTracker.strokeStyle = 'rgba(255, 255, 255, 0.04)';
+  ctxPitchTracker.lineWidth = 1;
+  guideMidis.forEach(midi => {
+    const normY = (midi - minMidi) / (maxMidi - minMidi);
+    const y = height - (normY * height);
+    ctxPitchTracker.beginPath();
+    ctxPitchTracker.moveTo(0, y);
+    ctxPitchTracker.lineTo(width, y);
     ctxPitchTracker.stroke();
   });
 }
