@@ -198,8 +198,7 @@ function checkForUpdates() {
               type: 'info',
               buttons: ['今すぐアップデート', '後で'],
               title: 'アップデートのご案内',
-              message: `新しいバージョン (v${latestVersion}) が見つかりました。`,
-              detail: 'バックグラウンドで全自動インストールが開始され、完了後に再起動して適用されます。'
+              message: `新しいバージョン (v${latestVersion}) が見つかりました。`
             }).then((result) => {
               if (result.response === 0) {
                 if (process.platform === 'win32') {
