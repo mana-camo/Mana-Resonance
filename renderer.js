@@ -955,20 +955,20 @@ function detectVibrato() {
   }
 }
 
-// 伴奏透視システム (スペクトログラム・レイヤー)
-let spectrogramBuffer = null;
-let spectroCtx = null;
 function drawSpectrogram() {
   if (!spectrumAnalyser || !ctxSpectrogram) return;
 
-  const width = canvasSpectrogram.clientWidth;
-  const height = canvasSpectrogram.clientHeight;
+  const cssWidth = canvasSpectrogram.clientWidth;
+  const cssHeight = canvasSpectrogram.clientHeight;
   const dpr = window.devicePixelRatio || 1;
 
-  // DPRトランスフォームを毎フレーム明示的にリセット・設定 (累積バグの防止)
+  const width = Math.round(cssWidth * dpr);
+  const height = Math.round(cssHeight * dpr);
+
+  // DPRトランスフォームを毎フレーム明示的に設定 (メインCanvasのDPR変換)
   ctxSpectrogram.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-  // オフスクリーンバッファ（横スクロール描画用）の初期化・管理
+  // オフスクリーンバッファ（実ピクセルベース）の初期化・管理
   if (!spectrogramBuffer || spectrogramBuffer.width !== width || spectrogramBuffer.height !== height) {
     spectrogramBuffer = document.createElement('canvas');
     spectrogramBuffer.width = width;
