@@ -17,29 +17,47 @@ namespace ManaResonanceInstall
         private Label lblBannerTitle;
         private Label lblBannerSub;
         private PictureBox bannerIcon;
+        private Panel bannerBorder;
+        private Panel bottomBorder;
 
+        // ウェルカム画面 (スプリット式)
         private Panel welcomePanel;
+        private Panel leftWelcomePanel;
+        private Panel rightWelcomePanel;
         private Label lblWelcomeTitle;
         private Label lblWelcomeDesc;
 
+        // ライセンス規約画面 (新ステップ)
+        private Panel licensePanel;
+        private Label lblLicenseDesc;
+        private TextBox txtLicense;
+        private CheckBox chkAccept;
+
+        // インストール先選択画面
         private Panel folderPanel;
         private Label lblFolderDesc;
         private TextBox txtFolder;
         private Button btnBrowse;
 
+        // インストール進行中画面
         private Panel progressPanel;
         private Label lblProgressDesc;
         private ProgressBar progressBar;
 
+        // 完了画面 (スプリット式)
         private Panel finishPanel;
+        private Panel leftFinishPanel;
+        private Panel rightFinishPanel;
         private Label lblFinishTitle;
+        private Label lblFinishDesc;
         private CheckBox chkRunApp;
+        private CheckBox chkShortcut;
 
         private Button btnBack;
         private Button btnNext;
         private Button btnCancel;
 
-        private int currentStep = 0; // 0: Welcome, 1: Folder, 2: Progress, 3: Finish
+        private int currentStep = 0; // 0: Welcome, 1: License, 2: Folder, 3: Progress, 4: Finish
         private string defaultInstallPath;
 
         private bool isUpdateMode = false;
@@ -56,8 +74,8 @@ namespace ManaResonanceInstall
             
             if (isUpdateMode)
             {
-                // アップデートモード時はダイレクトに進捗画面(ステップ2)へ行き、ダウンロードを開始
-                ShowStep(2);
+                // アップデートモード時はダイレクトに進捗画面(ステップ3)へ行き、ダウンロードを開始
+                ShowStep(3);
                 StartUpdateDownload();
             }
             else
@@ -72,23 +90,41 @@ namespace ManaResonanceInstall
             this.lblBannerTitle = new Label();
             this.lblBannerSub = new Label();
             this.bannerIcon = new PictureBox();
+            this.bannerBorder = new Panel();
+            this.bottomBorder = new Panel();
 
+            // ウェルカム画面 (スプリット式)
             this.welcomePanel = new Panel();
+            this.leftWelcomePanel = new Panel();
+            this.rightWelcomePanel = new Panel();
             this.lblWelcomeTitle = new Label();
             this.lblWelcomeDesc = new Label();
 
+            // ライセンス規約画面
+            this.licensePanel = new Panel();
+            this.lblLicenseDesc = new Label();
+            this.txtLicense = new TextBox();
+            this.chkAccept = new CheckBox();
+
+            // インストール先フォルダ
             this.folderPanel = new Panel();
             this.lblFolderDesc = new Label();
             this.txtFolder = new TextBox();
             this.btnBrowse = new Button();
 
+            // 進捗画面
             this.progressPanel = new Panel();
             this.lblProgressDesc = new Label();
             this.progressBar = new ProgressBar();
 
+            // 完了画面 (スプリット式)
             this.finishPanel = new Panel();
+            this.leftFinishPanel = new Panel();
+            this.rightFinishPanel = new Panel();
             this.lblFinishTitle = new Label();
+            this.lblFinishDesc = new Label();
             this.chkRunApp = new CheckBox();
+            this.chkShortcut = new CheckBox();
 
             this.btnBack = new Button();
             this.btnNext = new Button();
@@ -97,138 +133,228 @@ namespace ManaResonanceInstall
             this.SuspendLayout();
 
             // 
-            // Window Settings (一般的なWindowsインストーラーサイズとUI)
+            // Window Settings
             // 
-            this.ClientSize = new Size(520, 360);
+            this.ClientSize = new Size(500, 360);
             this.FormBorderStyle = FormBorderStyle.FixedDialog;
             this.MaximizeBox = false;
             this.MinimizeBox = false;
             this.StartPosition = FormStartPosition.CenterScreen;
-            this.Text = "Mana Resonance セットアップ";
+            this.Text = "Mana Resonance Setup";
+
+            // 境界線コントロール
+            this.bannerBorder.BackColor = Color.FromArgb(220, 220, 220);
+            this.bannerBorder.Location = new Point(0, 59);
+            this.bannerBorder.Size = new Size(500, 1);
+
+            this.bottomBorder.BackColor = Color.FromArgb(220, 220, 220);
+            this.bottomBorder.Location = new Point(0, 312);
+            this.bottomBorder.Size = new Size(500, 1);
 
             // 
-            // bannerPanel (上部バナー領域 - 一般的な流通ソフトのUI)
+            // bannerPanel (上部バナー領域 - License, Folder, Progressで共通使用)
             // 
             this.bannerPanel.BackColor = Color.White;
-            this.bannerPanel.Dock = DockStyle.Top;
-            this.bannerPanel.Height = 65;
-            this.bannerPanel.BorderStyle = BorderStyle.FixedSingle;
+            this.bannerPanel.Location = new Point(0, 0);
+            this.bannerPanel.Size = new Size(500, 59);
             this.bannerPanel.Controls.Add(this.lblBannerTitle);
             this.bannerPanel.Controls.Add(this.lblBannerSub);
             this.bannerPanel.Controls.Add(this.bannerIcon);
+            this.bannerPanel.Controls.Add(this.bannerBorder);
 
-            this.lblBannerTitle.Font = new Font("Segoe UI", 11F, FontStyle.Bold);
+            this.lblBannerTitle.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
             this.lblBannerTitle.Location = new Point(15, 10);
-            this.lblBannerTitle.Size = new Size(300, 20);
-            this.lblBannerTitle.Text = "Mana Resonance セットアップウィザード";
+            this.lblBannerTitle.Size = new Size(350, 18);
+            this.lblBannerTitle.Text = "Setup - Mana Resonance";
 
             this.lblBannerSub.Font = new Font("Segoe UI", 8.5F);
-            this.lblBannerSub.Location = new Point(25, 32);
-            this.lblBannerSub.Size = new Size(400, 18);
-            this.lblBannerSub.Text = "PCに Mana Resonance をインストールします。";
+            this.lblBannerSub.Location = new Point(25, 28);
+            this.lblBannerSub.Size = new Size(350, 18);
+            this.lblBannerSub.Text = "Please review the options below.";
+
+            this.bannerIcon.Size = new Size(38, 38);
+            this.bannerIcon.Location = new Point(445, 10);
+            this.bannerIcon.SizeMode = PictureBoxSizeMode.Zoom;
+            try
+            {
+                if (File.Exists("icon.ico"))
+                {
+                    this.bannerIcon.Image = Icon.ExtractAssociatedIcon("icon.ico").ToBitmap();
+                }
+            }
+            catch {}
 
             // 
-            // welcomePanel (ステップ 0: ようこそ画面)
+            // welcomePanel (ステップ 0: ようこそ画面 - スプリット)
             // 
-            this.welcomePanel.Location = new Point(0, 65);
-            this.welcomePanel.Size = new Size(520, 240);
-            this.welcomePanel.BackColor = SystemColors.Control;
+            this.welcomePanel.Location = new Point(0, 0);
+            this.welcomePanel.Size = new Size(500, 312);
+            this.welcomePanel.BackColor = Color.White;
+
+            this.leftWelcomePanel.BackColor = Color.FromArgb(12, 36, 97);
+            this.leftWelcomePanel.Location = new Point(0, 0);
+            this.leftWelcomePanel.Size = new Size(160, 312);
+            this.leftWelcomePanel.Paint += new PaintEventHandler(this.DrawSidebarWelcome);
+
+            this.rightWelcomePanel.Location = new Point(170, 0);
+            this.rightWelcomePanel.Size = new Size(330, 312);
+            this.rightWelcomePanel.BackColor = Color.White;
 
             this.lblWelcomeTitle.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
-            this.lblWelcomeTitle.Location = new Point(25, 25);
-            this.lblWelcomeTitle.Size = new Size(470, 25);
-            this.lblWelcomeTitle.Text = "Mana Resonance セットアップへようこそ";
+            this.lblWelcomeTitle.Location = new Point(10, 25);
+            this.lblWelcomeTitle.Size = new Size(310, 50);
+            this.lblWelcomeTitle.Text = "Welcome to the Mana Resonance Setup Wizard";
 
-            this.lblWelcomeDesc.Font = new Font("Segoe UI", 9F);
-            this.lblWelcomeDesc.Location = new Point(27, 65);
-            this.lblWelcomeDesc.Size = new Size(460, 150);
-            this.lblWelcomeDesc.Text = "このセットアップウィザードは、Mana Resonance をお使いのコンピューターにインストールします。\n\n続行するには「次へ」をクリックしてください。";
-            this.welcomePanel.Controls.Add(this.lblWelcomeTitle);
-            this.welcomePanel.Controls.Add(this.lblWelcomeDesc);
+            this.lblWelcomeDesc.Font = new Font("Segoe UI", 8.5F);
+            this.lblWelcomeDesc.Location = new Point(10, 90);
+            this.lblWelcomeDesc.Size = new Size(310, 200);
+            this.lblWelcomeDesc.Text = "This wizard will guide you through the installation of Mana Resonance on your computer.\n\nIt is recommended that you close all other applications before starting Setup.\n\nClick Next to continue.";
+
+            this.rightWelcomePanel.Controls.Add(this.lblWelcomeTitle);
+            this.rightWelcomePanel.Controls.Add(this.lblWelcomeDesc);
+            this.welcomePanel.Controls.Add(this.leftWelcomePanel);
+            this.welcomePanel.Controls.Add(this.rightWelcomePanel);
 
             // 
-            // folderPanel (ステップ 1: インストール先フォルダ選択)
+            // licensePanel (ステップ 1: ライセンス規約)
             // 
-            this.folderPanel.Location = new Point(0, 65);
-            this.folderPanel.Size = new Size(520, 240);
+            this.licensePanel.Location = new Point(0, 60);
+            this.licensePanel.Size = new Size(500, 252);
+            this.licensePanel.BackColor = SystemColors.Control;
+
+            this.lblLicenseDesc.Font = new Font("Segoe UI", 8.5F);
+            this.lblLicenseDesc.Location = new Point(15, 10);
+            this.lblLicenseDesc.Size = new Size(470, 32);
+            this.lblLicenseDesc.Text = "Please review the license terms before installing. Press Page Down to see the rest of the agreement.";
+
+            this.txtLicense.Font = new Font("Consolas", 8.5F);
+            this.txtLicense.Location = new Point(15, 45);
+            this.txtLicense.Size = new Size(470, 160);
+            this.txtLicense.Multiline = true;
+            this.txtLicense.ReadOnly = true;
+            this.txtLicense.ScrollBars = ScrollBars.Vertical;
+            this.txtLicense.BackColor = Color.White;
+            this.txtLicense.Text = GetLicenseText();
+
+            this.chkAccept.Font = new Font("Segoe UI", 8.5F);
+            this.chkAccept.Location = new Point(15, 215);
+            this.chkAccept.Size = new Size(470, 24);
+            this.chkAccept.Text = "I accept the terms in the License Agreement";
+            this.chkAccept.CheckedChanged += new EventHandler(this.chkAccept_CheckedChanged);
+
+            this.licensePanel.Controls.Add(this.lblLicenseDesc);
+            this.licensePanel.Controls.Add(this.txtLicense);
+            this.licensePanel.Controls.Add(this.chkAccept);
+
+            // 
+            // folderPanel (ステップ 2: インストール先選択)
+            // 
+            this.folderPanel.Location = new Point(0, 60);
+            this.folderPanel.Size = new Size(500, 252);
             this.folderPanel.BackColor = SystemColors.Control;
 
-            this.lblFolderDesc.Font = new Font("Segoe UI", 9F);
-            this.lblFolderDesc.Location = new Point(25, 25);
+            this.lblFolderDesc.Font = new Font("Segoe UI", 8.5F);
+            this.lblFolderDesc.Location = new Point(15, 15);
             this.lblFolderDesc.Size = new Size(470, 40);
-            this.lblFolderDesc.Text = "インストール先のフォルダを選択してください。\n別のフォルダにインストールする場合は、「参照」をクリックして選択してください。";
+            this.lblFolderDesc.Text = "Setup will install Mana Resonance in the following folder. To install in a different folder, click Browse and select another folder. Click Next to continue.";
 
             this.txtFolder.Font = new Font("Segoe UI", 9F);
-            this.txtFolder.Location = new Point(25, 80);
-            this.txtFolder.Size = new Size(365, 23);
+            this.txtFolder.Location = new Point(15, 80);
+            this.txtFolder.Size = new Size(375, 23);
             this.txtFolder.Text = defaultInstallPath;
 
-            this.btnBrowse.Font = new Font("Segoe UI", 9F);
+            this.btnBrowse.Font = new Font("Segoe UI", 8.5F);
             this.btnBrowse.Location = new Point(400, 78);
-            this.btnBrowse.Size = new Size(90, 26);
-            this.btnBrowse.Text = "参照(&B)...";
+            this.btnBrowse.Size = new Size(85, 26);
+            this.btnBrowse.Text = "Browse...";
             this.btnBrowse.Click += new EventHandler(this.btnBrowse_Click);
+
             this.folderPanel.Controls.Add(this.lblFolderDesc);
             this.folderPanel.Controls.Add(this.txtFolder);
             this.folderPanel.Controls.Add(this.btnBrowse);
 
             // 
-            // progressPanel (ステップ 2: インストール進捗状況)
+            // progressPanel (ステップ 3: インストール進行中)
             // 
-            this.progressPanel.Location = new Point(0, 65);
-            this.progressPanel.Size = new Size(520, 240);
+            this.progressPanel.Location = new Point(0, 60);
+            this.progressPanel.Size = new Size(500, 252);
             this.progressPanel.BackColor = SystemColors.Control;
 
-            this.lblProgressDesc.Font = new Font("Segoe UI", 9F);
-            this.lblProgressDesc.Location = new Point(25, 35);
+            this.lblProgressDesc.Font = new Font("Segoe UI", 8.5F);
+            this.lblProgressDesc.Location = new Point(15, 30);
             this.lblProgressDesc.Size = new Size(470, 30);
-            this.lblProgressDesc.Text = "ファイルを展開し、セットアップを実行しています。しばらくお待ちください...";
+            this.lblProgressDesc.Text = "Extracting files and performing installation. Please wait...";
 
-            this.progressBar.Location = new Point(25, 80);
-            this.progressBar.Size = new Size(465, 20);
+            this.progressBar.Location = new Point(15, 75);
+            this.progressBar.Size = new Size(470, 20);
             this.progressBar.Style = ProgressBarStyle.Blocks;
             this.progressPanel.Controls.Add(this.lblProgressDesc);
             this.progressPanel.Controls.Add(this.progressBar);
 
             // 
-            // finishPanel (ステップ 3: 完了画面)
+            // finishPanel (ステップ 4: 完了画面 - スプリット)
             // 
-            this.finishPanel.Location = new Point(0, 65);
-            this.finishPanel.Size = new Size(520, 240);
-            this.finishPanel.BackColor = SystemColors.Control;
+            this.finishPanel.Location = new Point(0, 0);
+            this.finishPanel.Size = new Size(500, 312);
+            this.finishPanel.BackColor = Color.White;
+
+            this.leftFinishPanel.BackColor = Color.FromArgb(12, 36, 97);
+            this.leftFinishPanel.Location = new Point(0, 0);
+            this.leftFinishPanel.Size = new Size(160, 312);
+            this.leftFinishPanel.Paint += new PaintEventHandler(this.DrawSidebarFinish);
+
+            this.rightFinishPanel.Location = new Point(170, 0);
+            this.rightFinishPanel.Size = new Size(330, 312);
+            this.rightFinishPanel.BackColor = Color.White;
 
             this.lblFinishTitle.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
-            this.lblFinishTitle.Location = new Point(25, 25);
-            this.lblFinishTitle.Size = new Size(470, 25);
-            this.lblFinishTitle.Text = "Mana Resonance セットアップの完了";
+            this.lblFinishTitle.Location = new Point(10, 25);
+            this.lblFinishTitle.Size = new Size(310, 50);
+            this.lblFinishTitle.Text = "Completing the Mana Resonance Setup Wizard";
 
-            this.chkRunApp.Font = new Font("Segoe UI", 9F);
-            this.chkRunApp.Location = new Point(27, 80);
-            this.chkRunApp.Size = new Size(400, 24);
-            this.chkRunApp.Text = "インストール完了後に Mana Resonance を起動する";
+            this.lblFinishDesc.Font = new Font("Segoe UI", 8.5F);
+            this.lblFinishDesc.Location = new Point(10, 90);
+            this.lblFinishDesc.Size = new Size(310, 70);
+            this.lblFinishDesc.Text = "Mana Resonance has been installed on your computer.\n\nClick Finish to close Setup.";
+
+            this.chkRunApp.Font = new Font("Segoe UI", 8.5F);
+            this.chkRunApp.Location = new Point(12, 175);
+            this.chkRunApp.Size = new Size(300, 24);
+            this.chkRunApp.Text = "Run Mana Resonance";
             this.chkRunApp.Checked = true;
-            this.finishPanel.Controls.Add(this.lblFinishTitle);
-            this.finishPanel.Controls.Add(this.chkRunApp);
+
+            this.chkShortcut.Font = new Font("Segoe UI", 8.5F);
+            this.chkShortcut.Location = new Point(12, 205);
+            this.chkShortcut.Size = new Size(300, 24);
+            this.chkShortcut.Text = "Create desktop shortcut";
+            this.chkShortcut.Checked = true;
+
+            this.rightFinishPanel.Controls.Add(this.lblFinishTitle);
+            this.rightFinishPanel.Controls.Add(this.lblFinishDesc);
+            this.rightFinishPanel.Controls.Add(this.chkRunApp);
+            this.rightFinishPanel.Controls.Add(this.chkShortcut);
+            this.finishPanel.Controls.Add(this.leftFinishPanel);
+            this.finishPanel.Controls.Add(this.rightFinishPanel);
 
             // 
-            // Control Buttons (戻る、次へ、キャンセル)
+            // Control Buttons
             // 
-            this.btnBack.Font = new Font("Segoe UI", 9F);
-            this.btnBack.Location = new Point(220, 318);
-            this.btnBack.Size = new Size(85, 26);
-            this.btnBack.Text = "< 戻る(&B)";
+            this.btnBack.Font = new Font("Segoe UI", 8.5F);
+            this.btnBack.Location = new Point(210, 323);
+            this.btnBack.Size = new Size(80, 25);
+            this.btnBack.Text = "< Back";
             this.btnBack.Click += new EventHandler(this.btnBack_Click);
 
-            this.btnNext.Font = new Font("Segoe UI", 9F);
-            this.btnNext.Location = new Point(310, 318);
-            this.btnNext.Size = new Size(85, 26);
-            this.btnNext.Text = "次へ(&N) >";
+            this.btnNext.Font = new Font("Segoe UI", 8.5F);
+            this.btnNext.Location = new Point(295, 323);
+            this.btnNext.Size = new Size(80, 25);
+            this.btnNext.Text = "Next >";
             this.btnNext.Click += new EventHandler(this.btnNext_Click);
 
-            this.btnCancel.Font = new Font("Segoe UI", 9F);
-            this.btnCancel.Location = new Point(410, 318);
-            this.btnCancel.Size = new Size(85, 26);
-            this.btnCancel.Text = "キャンセル";
+            this.btnCancel.Font = new Font("Segoe UI", 8.5F);
+            this.btnCancel.Location = new Point(390, 323);
+            this.btnCancel.Size = new Size(80, 25);
+            this.btnCancel.Text = "Cancel";
             this.btnCancel.Click += new EventHandler(this.btnCancel_Click);
 
             // 
@@ -236,14 +362,17 @@ namespace ManaResonanceInstall
             // 
             this.Controls.Add(this.bannerPanel);
             this.Controls.Add(this.welcomePanel);
+            this.Controls.Add(this.licensePanel);
             this.Controls.Add(this.folderPanel);
             this.Controls.Add(this.progressPanel);
             this.Controls.Add(this.finishPanel);
+            this.Controls.Add(this.bottomBorder);
             this.Controls.Add(this.btnBack);
             this.Controls.Add(this.btnNext);
             this.Controls.Add(this.btnCancel);
 
             this.welcomePanel.SuspendLayout();
+            this.licensePanel.SuspendLayout();
             this.folderPanel.SuspendLayout();
             this.progressPanel.SuspendLayout();
             this.finishPanel.SuspendLayout();
@@ -256,34 +385,50 @@ namespace ManaResonanceInstall
             currentStep = step;
 
             welcomePanel.Visible = (step == 0);
-            folderPanel.Visible = (step == 1);
-            progressPanel.Visible = (step == 2);
-            finishPanel.Visible = (step == 3);
+            licensePanel.Visible = (step == 1);
+            folderPanel.Visible = (step == 2);
+            progressPanel.Visible = (step == 3);
+            finishPanel.Visible = (step == 4);
 
-            btnBack.Enabled = (step > 0 && step < 2); // 進行中と完了画面では戻れない
-            btnCancel.Enabled = (step < 2); // 進行中・完了後はキャンセル不可
+            // Welcome(0) と Finish(4) は上部バナーがない(非表示にする)
+            bannerPanel.Visible = (step != 0 && step != 4);
+
+            // 戻るボタンの制御: Step 0 または 進行中(3) または 完了(4) では押せない
+            btnBack.Enabled = (step > 0 && step < 3);
+
+            // キャンセルボタンの制御: 進行中(3) または 完了(4) 以降はキャンセル不可
+            btnCancel.Enabled = (step < 3);
 
             if (step == 0)
             {
-                lblBannerSub.Text = "PCに Mana Resonance をインストールします。";
-                btnNext.Text = "次へ(&N) >";
+                btnNext.Text = "Next >";
+                btnNext.Enabled = true;
             }
-            else if (step == 1)
+            else if (step == 1) // License
             {
-                lblBannerSub.Text = "インストール先のフォルダを選択します。";
-                btnNext.Text = "次へ(&N) >";
+                lblBannerTitle.Text = "License Agreement";
+                lblBannerSub.Text = "Please read the license terms carefully before installing.";
+                btnNext.Text = "Agree";
+                btnNext.Enabled = chkAccept.Checked; // 同意チェック状態に連動
             }
-            else if (step == 2)
+            else if (step == 2) // Folder
             {
-                lblBannerSub.Text = "必要なファイルをコピーしています。";
-                btnNext.Text = "次へ(&N) >";
+                lblBannerTitle.Text = "Choose Install Location";
+                lblBannerSub.Text = "Choose the folder in which to install Mana Resonance.";
+                btnNext.Text = "Install";
+                btnNext.Enabled = true;
+            }
+            else if (step == 3) // Progress
+            {
+                lblBannerTitle.Text = "Installing";
+                lblBannerSub.Text = "Please wait while Mana Resonance is being installed.";
+                btnNext.Text = "Next >";
                 btnNext.Enabled = false;
                 ExecuteInstallation();
             }
-            else if (step == 3)
+            else if (step == 4) // Finish
             {
-                lblBannerSub.Text = "セットアップが正常に終了しました。";
-                btnNext.Text = "完了(&F)";
+                btnNext.Text = "Finish";
                 btnNext.Enabled = true;
             }
         }
@@ -298,9 +443,15 @@ namespace ManaResonanceInstall
 
         private void btnNext_Click(object sender, EventArgs e)
         {
-            if (currentStep == 3)
+            if (currentStep == 4)
             {
-                // 完了時処理
+                // ショートカット作成 (ユーザー選択に連動)
+                if (chkShortcut.Checked)
+                {
+                    CreateDesktopShortcutDirect(txtFolder.Text.Trim());
+                }
+
+                // 完了時起動処理
                 if (chkRunApp.Checked)
                 {
                     string targetFolder = txtFolder.Text.Trim();
@@ -316,9 +467,71 @@ namespace ManaResonanceInstall
                 }
                 this.Close();
             }
-            else if (currentStep < 3)
+            else if (currentStep < 4)
             {
                 ShowStep(currentStep + 1);
+            }
+        }
+
+        private void chkAccept_CheckedChanged(object sender, EventArgs e)
+        {
+            if (currentStep == 1)
+            {
+                btnNext.Enabled = chkAccept.Checked;
+            }
+        }
+
+        private string GetLicenseText()
+        {
+            return "Mana Resonance License Agreement\r\n\r\n" +
+                   "Please read the following license terms carefully before proceeding with the installation.\r\n\r\n" +
+                   "1. Open Source and Publicity\r\n" +
+                   "This application's source code is publicly available. You are free to distribute, share, and modify the code under public domain rules, subject to these terms.\r\n\r\n" +
+                   "2. Disclaimer of Liability (責任の免責)\r\n" +
+                   "配布は自由ですが、開発者および権利者は、本ソフトウェアの使用または配布によって生じた一切の責任、損害、クレーム等について、一切の責任を負いません。本ソフトウェアは「現状のまま」提供されます。\r\n\r\n" +
+                   "3. Prohibition of Reverse Engineering (リバースエンジニアリングの禁止)\r\n" +
+                   "このインストーラーに含まれるバイナリやコンポーネントについて、許可なくリバースエンジニアリング、デコンパイル、逆アセンブル等の行為を行うことは固く禁止します。\r\n\r\n" +
+                   "If you agree to these terms, please check \"I accept the terms in the License Agreement\" and click Agree to proceed.";
+        }
+
+        private void DrawSidebarWelcome(object sender, PaintEventArgs e)
+        {
+            Graphics g = e.Graphics;
+            g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+
+            // 大きな「Welcome」文字の描画
+            using (Font f = new Font("Segoe UI", 16, FontStyle.Bold))
+            {
+                g.DrawString("Mana\r\nResonance", f, Brushes.White, 15, 30);
+            }
+
+            // PCっぽい図形の簡易描画 (NSIS風のレトロなPC)
+            using (Pen p = new Pen(Color.FromArgb(100, 255, 255, 255), 2))
+            {
+                g.DrawRectangle(p, 40, 140, 80, 50); // モニター
+                g.DrawLine(p, 80, 190, 80, 210); // スタンド
+                g.DrawLine(p, 60, 210, 100, 210); // ベース
+                g.DrawRectangle(p, 30, 215, 100, 10); // キーボード
+            }
+        }
+
+        private void DrawSidebarFinish(object sender, PaintEventArgs e)
+        {
+            Graphics g = e.Graphics;
+            g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+
+            using (Font f = new Font("Segoe UI", 16, FontStyle.Bold))
+            {
+                g.DrawString("Installation\r\nComplete", f, Brushes.White, 15, 30);
+            }
+
+            // チェックマークの描画 (レトロな完成イメージ)
+            using (Pen p = new Pen(Color.FromArgb(120, 46, 204, 113), 6))
+            {
+                p.StartCap = System.Drawing.Drawing2D.LineCap.Round;
+                p.EndCap = System.Drawing.Drawing2D.LineCap.Round;
+                g.DrawLine(p, 45, 170, 70, 195);
+                g.DrawLine(p, 70, 195, 115, 145);
             }
         }
 
@@ -375,14 +588,8 @@ namespace ManaResonanceInstall
                 ExtractResource("uninstaller.exe", uninstallerPath);
                 progressBar.Value = 85;
 
-                // 3. ショートカットの作成
+                // 3. スタートメニューショートカットの作成 (デスクトップは完了画面で処理)
                 string mainExePath = Path.Combine(targetDir, "Mana Resonance.exe");
-
-                // デスクトップ
-                string desktopPath = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
-                CreateShortcut(Path.Combine(desktopPath, "Mana Resonance.lnk"), mainExePath, targetDir);
-
-                // スタートメニュー (All Users / Common StartMenu に登録したいため、管理者権限が必要です)
                 string commonStartMenu = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonStartMenu), "Programs");
                 if (!Directory.Exists(commonStartMenu))
                 {
@@ -405,13 +612,27 @@ namespace ManaResonanceInstall
                 progressBar.Value = 100;
 
                 await System.Threading.Tasks.Task.Delay(500);
-                ShowStep(3); // 完了画面へ
+                ShowStep(4); // 完了画面(4)へ
             }
             catch (Exception ex)
             {
                 MessageBox.Show("インストール中にエラーが発生しました:\n" + ex.Message, "エラー", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                ShowStep(1); // フォルダ選択画面へ戻す
+                ShowStep(2); // フォルダ選択画面(2)へ戻す
                 btnNext.Enabled = true;
+            }
+        }
+
+        private void CreateDesktopShortcutDirect(string targetDir)
+        {
+            try
+            {
+                string mainExePath = Path.Combine(targetDir, "Mana Resonance.exe");
+                string desktopPath = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
+                CreateShortcut(Path.Combine(desktopPath, "Mana Resonance.lnk"), mainExePath, targetDir);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Shortcut creation error: " + ex.Message);
             }
         }
 
@@ -488,10 +709,10 @@ namespace ManaResonanceInstall
                 using (RegistryKey key = parent.CreateSubKey("ManaResonance"))
                 {
                     key.SetValue("DisplayName", "Mana Resonance");
-                    key.SetValue("ApplicationVersion", "1.0.7");
+                    key.SetValue("ApplicationVersion", "1.0.8");
                     key.SetValue("Publisher", "Mana Resonance Studio");
                     key.SetValue("DisplayIcon", iconPath);
-                    key.SetValue("DisplayVersion", "1.0.7");
+                    key.SetValue("DisplayVersion", "1.0.8");
                     key.SetValue("InstallLocation", installDir);
                     key.SetValue("UninstallString", uninstallerPath);
                     key.SetValue("NoModify", 1);
@@ -891,10 +1112,10 @@ namespace ManaResonanceInstall
                     using (RegistryKey key = parent.CreateSubKey("ManaResonance"))
                     {
                         key.SetValue("DisplayName", "Mana Resonance");
-                        key.SetValue("ApplicationVersion", "1.0.7");
+                        key.SetValue("ApplicationVersion", "1.0.8");
                         key.SetValue("Publisher", "Mana Resonance Studio");
                         key.SetValue("DisplayIcon", iconPath);
-                        key.SetValue("DisplayVersion", "1.0.7");
+                        key.SetValue("DisplayVersion", "1.0.8");
                         key.SetValue("InstallLocation", installDir);
                         key.SetValue("UninstallString", uninstallerPath);
                         key.SetValue("NoModify", 1);

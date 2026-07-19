@@ -1104,7 +1104,10 @@ function drawPitchTrackerMac() {
   ctxPitchTracker.fillStyle = '#020205';
   ctxPitchTracker.fillRect(0, 0, cssWidth, cssHeight);
 
-  scrollPitchHistory.push(lastValidF0 > 0 ? lastValidF0 : 0);
+  scrollPitchHistory.push({
+    f0: lastValidF0 > 0 ? lastValidF0 : 0,
+    confidence: lastValidF0 > 0 ? (typeof lastPitchConfidence !== 'undefined' ? lastPitchConfidence : 1.0) : 0
+  });
   if (scrollPitchHistory.length > MAC_MAX_HISTORY) {
     scrollPitchHistory.shift();
   }
@@ -1114,7 +1117,10 @@ function drawPitchTrackerMac() {
 
   const dotXRatio = cssWidth / MAC_MAX_HISTORY;
   for (let i = 0; i < scrollPitchHistory.length; i++) {
-    const f0 = scrollPitchHistory[i];
+    const item = scrollPitchHistory[i];
+    const f0 = (item && typeof item === 'object') ? item.f0 : item;
+    const confidence = (item && typeof item === 'object') ? item.confidence : 1.0;
+
     if (f0 <= 0) continue;
 
     const midiNoteNum = 12 * Math.log2(f0 / 440) + 69;
@@ -1123,11 +1129,14 @@ function drawPitchTrackerMac() {
       const dotY = cssHeight - (normY * cssHeight);
       const dotX = i * dotXRatio;
 
+      // 確信度(0.35〜0.9)に応じてアルファ値を0.1〜1.0にマッピング
+      const alpha = Math.max(0.1, Math.min(1.0, (confidence - 0.35) / (0.9 - 0.35)));
+
       ctxPitchTracker.beginPath();
       ctxPitchTracker.arc(dotX, dotY, 2, 0, 2 * Math.PI);
-      ctxPitchTracker.fillStyle = '#22c55e';
-      ctxPitchTracker.shadowColor = '#22c55e';
-      ctxPitchTracker.shadowBlur = 4;
+      ctxPitchTracker.fillStyle = `rgba(34, 197, 94, ${alpha})`;
+      ctxPitchTracker.shadowColor = `rgba(34, 197, 94, ${alpha})`;
+      ctxPitchTracker.shadowBlur = 4 * alpha;
       ctxPitchTracker.fill();
       ctxPitchTracker.shadowBlur = 0;
     }

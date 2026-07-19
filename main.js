@@ -205,14 +205,22 @@ function checkForUpdates() {
           }
 
           if (asset) {
-            dialog.showMessageBox(mainWindow, {
-              type: 'info',
-              buttons: ['今すぐアップデート', '後で'],
-              title: 'アップデートのご案内',
-              message: `新しいバージョン (v${latestVersion}) が見つかりました。`
-            }).then((result) => {
-              if (result.response === 0) {
-                if (process.platform === 'win32') {
+            if (process.platform === 'darwin') {
+              dialog.showMessageBox(mainWindow, {
+                type: 'info',
+                buttons: ['OK'],
+                title: 'アップデートのご案内',
+                message: `新しいバージョン (v${latestVersion}) が利用可能です。`
+              });
+              // Mac版は通知を出すだけでアプリは終了しない
+            } else if (process.platform === 'win32') {
+              dialog.showMessageBox(mainWindow, {
+                type: 'info',
+                buttons: ['今すぐアップデート', '後で'],
+                title: 'アップデートのご案内',
+                message: `新しいバージョン (v${latestVersion}) が見つかりました。`
+              }).then((result) => {
+                if (result.response === 0) {
                   const installUpdater = 'C:\\Program Files\\Mana Resonance\\updater.exe';
                   const localUpdater = path.join(path.dirname(process.execPath), 'updater.exe');
                   const updaterPath = fs.existsSync(installUpdater) ? installUpdater : localUpdater;
@@ -228,12 +236,9 @@ function checkForUpdates() {
                     shell.openExternal(release.html_url);
                     app.quit();
                   }
-                } else if (process.platform === 'darwin') {
-                  shell.openExternal(asset.browser_download_url);
-                  app.quit();
                 }
-              }
-            });
+              });
+            }
           }
         }
       } catch (err) {
