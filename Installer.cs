@@ -673,14 +673,85 @@ namespace ManaResonanceInstall
 
             if (isSilent)
             {
-                // サイレントモード時はフォームを表示せずにバックグラウンドで上書き展開
-                RunSilentInstall();
+                if (isUpdate && !string.IsNullOrEmpty(downloadUrl))
+                {
+                    // サイレントかつアップデートURL指定時は、フォームを出さずにバックグラウンドでダウンロードと上書きを実行
+                    RunSilentUpdate(downloadUrl);
+                }
+                else
+                {
+                    // 通常のサイレントインストール
+                    RunSilentInstall();
+                }
                 return;
             }
 
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
             Application.Run(new InstallerForm(isUpdate, downloadUrl));
+        }
+
+        private static void RunSilentUpdate(string downloadUrl)
+        {
+            try
+            {
+                string installDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "Mana Resonance");
+                string tempZip = Path.Combine(Path.GetTempPath(), "mana_silent_update.zip");
+
+                if (File.Exists(tempZip))
+                {
+                    try { File.Delete(tempZip); } catch {}
+                }
+
+                // WebClientによる同期ダウンロード
+                using (WebClient client = new WebClient())
+                {
+                    client.Headers.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 ElectronUpdater");
+                    ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12 | SecurityProtocolType.Tls11 | SecurityProtocolType.Tls;
+                    client.DownloadFile(downloadUrl, tempZip);
+                }
+
+                if (File.Exists(tempZip))
+                {
+                    // 既存プロセスの強制終了
+                    Process[] processes = Process.GetProcessesByName("Mana Resonance");
+                    foreach (var process in processes)
+                    {
+                        try { process.Kill(); process.WaitForExit(3000); } catch {}
+                    }
+
+                    // ZIP展開 (上書き)
+                    using (ZipArchive archive = ZipFile.OpenRead(tempZip))
+                    {
+                        foreach (ZipArchiveEntry entry in archive.Entries)
+                        {
+                            if (string.IsNullOrEmpty(entry.Name)) continue;
+
+                            string destPath = Path.Combine(installDir, entry.FullName);
+                            string destSubDir = Path.GetDirectoryName(destPath);
+
+                            if (!Directory.Exists(destSubDir))
+                            {
+                                Directory.CreateDirectory(destSubDir);
+                            }
+
+                            entry.ExtractToFile(destPath, true);
+                        }
+                    }
+                    try { File.Delete(tempZip); } catch {}
+                }
+
+                // 最新版を自動起動
+                string mainExe = Path.Combine(installDir, "Mana Resonance.exe");
+                if (File.Exists(mainExe))
+                {
+                    Process.Start(mainExe);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Silent update error: " + ex.Message);
+            }
         }
 
         private static void RunSilentInstall()

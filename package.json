@@ -29,6 +29,7 @@
   },
   "updater": {
     "owner": "mana-camo",
-    "repo": "Mana-Resonance"
+    "repo": "Mana-Resonance",
+    "allowPrerelease": true
   }
 }

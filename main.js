@@ -3,7 +3,7 @@ const path = require('path');
 const https = require('https');
 const fs = require('fs');
 const os = require('os');
-const { spawn } = require('child_process');
+const { spawn, exec } = require('child_process');
 
 let mainWindow;
 
@@ -146,9 +146,14 @@ function checkForUpdates() {
     return;
   }
 
+  const allowPrerelease = updater.allowPrerelease === true;
+  const pathUrl = allowPrerelease
+    ? `/repos/${updater.owner}/${updater.repo}/releases`
+    : `/repos/${updater.owner}/${updater.repo}/releases/latest`;
+
   const options = {
     hostname: 'api.github.com',
-    path: `/repos/${updater.owner}/${updater.repo}/releases/latest`,
+    path: pathUrl,
     headers: {
       'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Electron'
     }
@@ -164,7 +169,17 @@ function checkForUpdates() {
           return;
         }
 
-        const release = JSON.parse(data);
+        let release = null;
+        if (allowPrerelease) {
+          const releases = JSON.parse(data);
+          if (Array.isArray(releases) && releases.length > 0) {
+            release = releases[0]; // 最も新しいリリース（プレリリース含む）
+          }
+        } else {
+          release = JSON.parse(data);
+        }
+
+        if (!release) return;
         const latestVersion = release.tag_name.replace(/^v/, ''); // 'v1.0.1' -> '1.0.1'
 
         if (isNewerVersion(currentVersion, latestVersion)) {
@@ -173,7 +188,6 @@ function checkForUpdates() {
           // 適切なダウンロードアセットを探す (Windowsの場合は app.zip または exe)
           let asset = null;
           if (process.platform === 'win32') {
-            // app.zip があれば優先し、なければ .exe インストーラーを対象とする
             asset = release.assets.find(a => a.name.endsWith('app.zip')) || release.assets.find(a => a.name.endsWith('.exe'));
           } else if (process.platform === 'darwin') {
             asset = release.assets.find(a => a.name.endsWith('.zip') || a.name.endsWith('.dmg'));
@@ -185,26 +199,26 @@ function checkForUpdates() {
               buttons: ['今すぐアップデート', '後で'],
               title: 'アップデートのご案内',
               message: `新しいバージョン (v${latestVersion}) が見つかりました。`,
-              detail: 'C#アップデーターウィンドウが開き、全自動でダウンロードとインストールを実行します。'
+              detail: 'バックグラウンドで全自動インストールが開始され、完了後に再起動して適用されます。'
             }).then((result) => {
               if (result.response === 0) {
                 if (process.platform === 'win32') {
-                  const updaterPath = path.join(path.dirname(process.execPath), 'updater.exe');
+                  const installUpdater = 'C:\\Program Files\\Mana Resonance\\updater.exe';
+                  const localUpdater = path.join(path.dirname(process.execPath), 'updater.exe');
+                  const updaterPath = fs.existsSync(installUpdater) ? installUpdater : localUpdater;
+
                   if (fs.existsSync(updaterPath)) {
-                    // updater.exe を起動し、ダウンロードURLを渡してアプリを終了
-                    const child = spawn(updaterPath, ['/update', asset.browser_download_url], {
-                      detached: true,
-                      stdio: 'ignore'
+                    // PowerShell経由でUAC管理者昇格(RunAs)＆サイレント(/silent)で起動
+                    const cmd = `powershell -Command "Start-Process '${updaterPath}' -ArgumentList '/silent', '/update', '${asset.browser_download_url}' -Verb RunAs"`;
+                    exec(cmd, (err) => {
+                      if (err) console.error('UAC昇格起動エラー:', err);
                     });
-                    child.unref();
                     app.quit();
                   } else {
-                    // updater.exe がない場合はブラウザでダウンロードページを開いて終了
                     shell.openExternal(release.html_url);
                     app.quit();
                   }
                 } else if (process.platform === 'darwin') {
-                  // macOSの場合はブラウザでダウンロードリンクを開いて終了
                   shell.openExternal(asset.browser_download_url);
                   app.quit();
                 }
