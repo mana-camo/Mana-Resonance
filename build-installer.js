@@ -76,9 +76,9 @@ try {
     throw new Error('Compilation failed: ManaResonanceSetup.exe was not created.');
   }
 
-  // 6. 中間ファイルのクリーンアップ
+  // 6. 中間ファイルのクリーンアップ (app.zipはアップデート用に残すため削除しません)
   console.log('Cleaning up temporary build files...');
-  fs.unlinkSync(archiveFile);
+  // fs.unlinkSync(archiveFile);
   fs.rmSync(distDir, { recursive: true, force: true });
   
   console.log('\n======================================================');
