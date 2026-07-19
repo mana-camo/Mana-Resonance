@@ -121,10 +121,10 @@ let ctxSpectrogram = null;
 let ctxPitchTracker = null;
 let ctxSpectrum = null;
 let ctxParticles = null;
-let pitchTrackerBuffer = null;
-let pitchCtx = null;
-let spectrogramBuffer = null;
-let spectroCtx = null;
+let pitchHistory = [];
+const MAX_PITCH_HISTORY = 250;
+let spectrogramHistory = [];
+const MAX_SPEC_HISTORY = 180;
 let lastTime = performance.now();
 let frameCount = 0;
 
@@ -964,41 +964,28 @@ function drawSpectrogram() {
   const cssHeight = canvasSpectrogram.clientHeight;
   const dpr = window.devicePixelRatio || 1;
 
-  const width = Math.round(cssWidth * dpr);
-  const height = Math.round(cssHeight * dpr);
-
   // DPRトランスフォームを毎フレーム明示的に設定 (メインCanvasのDPR変換)
   ctxSpectrogram.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-  // オフスクリーンバッファ（実ピクセルベース）の初期化・管理
-  if (!spectrogramBuffer || spectrogramBuffer.width !== width || spectrogramBuffer.height !== height) {
-    spectrogramBuffer = document.createElement('canvas');
-    spectrogramBuffer.width = width;
-    spectrogramBuffer.height = height;
-    spectroCtx = spectrogramBuffer.getContext('2d');
-    spectroCtx.fillStyle = '#020205';
-    spectroCtx.fillRect(0, 0, width, height);
-  }
+  // キャンバスをクリア (残像や引き伸ばしを100%防止)
+  ctxSpectrogram.fillStyle = '#020205';
+  ctxSpectrogram.fillRect(0, 0, cssWidth, cssHeight);
 
-  // バッファを左に1ピクセルスクロール（移動）させる
-  spectroCtx.drawImage(spectrogramBuffer, -1.5, 0);
-
-  // 最新スペクトルを右端(幅-1の位置)に描画
+  // 最新スペクトルデータを取得
   const data = new Uint8Array(spectrumAnalyser.frequencyBinCount);
   spectrumAnalyser.getByteFrequencyData(data);
 
-  // MIDIノート 36(C2: 65Hz) から 96(C7: 2093Hz) までの60半音をマッピング
+  // MIDIノート 36(C2: 65Hz) から 96(C7: 2093Hz) までのマッピング
   const minMidi = 36;
   const maxMidi = 96;
-  
-  // 1ピクセル幅の縦線を描画
-  const x = width - 1;
   const sampleRate = audioCtx.sampleRate;
   const totalBins = spectrumAnalyser.frequencyBinCount;
 
-  for (let y = 0; y < height; y++) {
+  // 1列分のエネルギーデータを格納する配列
+  const frameEnergy = new Uint8Array(cssHeight);
+  for (let y = 0; y < cssHeight; y++) {
     // 画面の高さに対するMIDIノート番号の補間（下ほど低音）
-    const normY = 1.0 - (y / height); // 0〜1
+    const normY = 1.0 - (y / cssHeight); // 0〜1
     const midiNote = minMidi + normY * (maxMidi - minMidi);
     
     // 周波数を算出
@@ -1006,92 +993,91 @@ function drawSpectrogram() {
     
     // 周波数からFFTのビンインデックスをマッピング
     const binIdx = Math.round((targetFreq * totalBins * 2) / sampleRate);
-    const energy = binIdx < data.length ? data[binIdx] : 0;
+    frameEnergy[y] = binIdx < data.length ? data[binIdx] : 0;
+  }
 
-    // 音圧に応じた淡いブルー（弱）〜マゼンタ・ピンク（強）のグラデーションカラーの選定
-    // 弱: rgba(6, 18, 50, 0.4) から 強: rgba(236, 72, 153, 0.95)
-    let color;
-    if (energy > 0) {
+  // 履歴配列に追加
+  spectrogramHistory.push(frameEnergy);
+  if (spectrogramHistory.length > MAX_SPEC_HISTORY) {
+    spectrogramHistory.shift();
+  }
+
+  // 履歴配列からX列分の縦線を左から右に向かって描画
+  const colWidth = cssWidth / MAX_SPEC_HISTORY;
+  for (let i = 0; i < spectrogramHistory.length; i++) {
+    const energies = spectrogramHistory[i];
+    const x = i * colWidth;
+
+    for (let y = 0; y < cssHeight; y++) {
+      const energy = energies[y];
+      if (energy <= 0) continue;
+
       const normEnergy = energy / 255;
       const r = Math.round(6 + normEnergy * 230);
       const g = Math.round(18 + normEnergy * 54);
       const b = Math.round(50 + normEnergy * 103);
       const a = 0.15 + normEnergy * 0.8;
-      color = `rgba(${r}, ${g}, ${b}, ${a})`;
-    } else {
-      color = 'rgba(2, 2, 5, 1)';
+
+      ctxSpectrogram.fillStyle = `rgba(${r}, ${g}, ${b}, ${a})`;
+      ctxSpectrogram.fillRect(x, y, colWidth + 0.5, 1.2); // 隙間埋めのため幅に+0.5px
     }
-
-    spectroCtx.fillStyle = color;
-    spectroCtx.fillRect(x, y, 1.5, 1.2);
   }
-
-  // メインCanvasに描画バッファを反映
-  ctxSpectrogram.clearRect(0, 0, width, height);
-  ctxSpectrogram.drawImage(spectrogramBuffer, 0, 0);
 }
 
-// ボーカルピッチ専用の軌跡トラッカー
 function drawPitchTracker() {
   if (!ctxPitchTracker) return;
 
-  const width = canvasPitchTracker.clientWidth;
-  const height = canvasPitchTracker.clientHeight;
+  const cssWidth = canvasPitchTracker.clientWidth;
+  const cssHeight = canvasPitchTracker.clientHeight;
+  const dpr = window.devicePixelRatio || 1;
 
-  // オフスクリーン描画バッファの動的初期化・リサイズ
-  if (!pitchTrackerBuffer || pitchTrackerBuffer.width !== width || pitchTrackerBuffer.height !== height) {
-    pitchTrackerBuffer = document.createElement('canvas');
-    pitchTrackerBuffer.width = width;
-    pitchTrackerBuffer.height = height;
-    pitchCtx = pitchTrackerBuffer.getContext('2d');
-    pitchCtx.fillStyle = '#020205';
-    pitchCtx.fillRect(0, 0, width, height);
+  // メインCanvasのDPR設定
+  ctxPitchTracker.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+  // キャンバスをクリア
+  ctxPitchTracker.fillStyle = '#020205';
+  ctxPitchTracker.fillRect(0, 0, cssWidth, cssHeight);
+
+  // 履歴配列に最新ピッチを追加 (音がないフレームは0)
+  pitchHistory.push(lastValidF0 > 0 ? lastValidF0 : 0);
+  if (pitchHistory.length > MAX_PITCH_HISTORY) {
+    pitchHistory.shift();
   }
 
-  // バッファを左に1.5ピクセルスクロール
-  pitchCtx.drawImage(pitchTrackerBuffer, -1.5, 0);
-
-  // 右端のスクロールで入ってきた部分をクリア
-  const x = width - 1.5;
-  pitchCtx.fillStyle = '#020205';
-  pitchCtx.fillRect(x, 0, 1.5, height);
-
-  // MIDIノート 36(C2: 65Hz) から 96(C7: 2093Hz) までのレンジ
   const minMidi = 36;
   const maxMidi = 96;
 
-  // 検出されたボーカルのピッチがあれば、バッファの右端に緑のドットを描画（背景と一緒に左へ流して軌跡を作る）
-  if (lastValidF0 > 0) {
-    const midiNoteNum = 12 * Math.log2(lastValidF0 / 440) + 69;
+  // 履歴配列の全ドットを左から右へ描画 (自動スクロール)
+  for (let i = 0; i < pitchHistory.length; i++) {
+    const f0 = pitchHistory[i];
+    if (f0 <= 0) continue; // 音がない箇所は描画スキップ
+
+    const midiNoteNum = 12 * Math.log2(f0 / 440) + 69;
     if (midiNoteNum >= minMidi && midiNoteNum <= maxMidi) {
       const normY = (midiNoteNum - minMidi) / (maxMidi - minMidi);
-      const dotY = height - (normY * height);
-      const currentX = width - 1;
+      const dotY = cssHeight - (normY * cssHeight);
+      const dotX = (i / MAX_PITCH_HISTORY) * cssWidth;
 
-      pitchCtx.beginPath();
-      pitchCtx.arc(currentX, dotY, 2, 0, 2 * Math.PI); // ドット半径2
-      pitchCtx.fillStyle = '#22c55e'; // 鮮やかなグリーン
-      pitchCtx.shadowColor = '#22c55e';
-      pitchCtx.shadowBlur = 4;
-      pitchCtx.fill();
-      pitchCtx.shadowBlur = 0; // シャドウ効果をリセット
+      ctxPitchTracker.beginPath();
+      ctxPitchTracker.arc(dotX, dotY, 2, 0, 2 * Math.PI); // 半径2
+      ctxPitchTracker.fillStyle = '#22c55e'; // 鮮やかなグリーン
+      ctxPitchTracker.shadowColor = '#22c55e';
+      ctxPitchTracker.shadowBlur = 4;
+      ctxPitchTracker.fill();
+      ctxPitchTracker.shadowBlur = 0; // シャドウをリセット
     }
   }
 
-  // メインCanvasにバッファを描画
-  ctxPitchTracker.clearRect(0, 0, width, height);
-  ctxPitchTracker.drawImage(pitchTrackerBuffer, 0, 0);
-
-  // メインCanvas上に固定のピッチレンジガイドライン（C2〜C6）を描画
-  const guideMidis = [36, 48, 60, 72, 84, 96]; // C2, C3, C4, C5, C6, C7 (ガイドライン)
+  // 固定のピッチレンジガイドライン（C2〜C7）を描画
+  const guideMidis = [36, 48, 60, 72, 84, 96]; // C2, C3, C4, C5, C6, C7
   ctxPitchTracker.strokeStyle = 'rgba(255, 255, 255, 0.04)';
   ctxPitchTracker.lineWidth = 1;
   guideMidis.forEach(midi => {
     const normY = (midi - minMidi) / (maxMidi - minMidi);
-    const y = height - (normY * height);
+    const y = cssHeight - (normY * cssHeight);
     ctxPitchTracker.beginPath();
     ctxPitchTracker.moveTo(0, y);
-    ctxPitchTracker.lineTo(width, y);
+    ctxPitchTracker.lineTo(cssWidth, y);
     ctxPitchTracker.stroke();
   });
 }
