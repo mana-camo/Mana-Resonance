@@ -7,6 +7,7 @@ using System.Reflection;
 using System.Security.Principal;
 using Microsoft.Win32;
 using System.IO.Compression;
+using System.Net;
 
 namespace ManaResonanceInstall
 {
@@ -41,12 +42,28 @@ namespace ManaResonanceInstall
         private int currentStep = 0; // 0: Welcome, 1: Folder, 2: Progress, 3: Finish
         private string defaultInstallPath;
 
-        public InstallerForm()
+        private bool isUpdateMode = false;
+        private string updateDownloadUrl = "";
+
+        public InstallerForm(bool isUpdate = false, string downloadUrl = "")
         {
+            this.isUpdateMode = isUpdate;
+            this.updateDownloadUrl = downloadUrl;
+
             // デフォルトインストール先 (Program Files)
             defaultInstallPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "Mana Resonance");
             InitializeComponent();
-            ShowStep(0);
+            
+            if (isUpdateMode)
+            {
+                // アップデートモード時はダイレクトに進捗画面(ステップ2)へ行き、ダウンロードを開始
+                ShowStep(2);
+                StartUpdateDownload();
+            }
+            else
+            {
+                ShowStep(0);
+            }
         }
 
         private void InitializeComponent()
@@ -376,6 +393,15 @@ namespace ManaResonanceInstall
 
                 // 4. レジストリ (Uninstall情報) の登録
                 RegisterUninstall(targetDir, uninstallerPath, mainExePath);
+
+                // 5. 自分自身を updater.exe としてインストール先にコピー (自動アップデート時に使用するため)
+                try
+                {
+                    string updaterPath = Path.Combine(targetDir, "updater.exe");
+                    File.Copy(Application.ExecutablePath, updaterPath, true);
+                }
+                catch {}
+
                 progressBar.Value = 100;
 
                 await System.Threading.Tasks.Task.Delay(500);
@@ -473,6 +499,123 @@ namespace ManaResonanceInstall
                 }
             }
         }
+
+        private void StartUpdateDownload()
+        {
+            // ボタン操作を無効・非表示に
+            btnBack.Visible = false;
+            btnNext.Visible = false;
+            btnCancel.Enabled = false;
+
+            lblBannerTitle.Text = "Updating Mana Resonance";
+            lblBannerSub.Text = "Downloading and applying latest updates...";
+
+            string tempZipPath = Path.Combine(Path.GetTempPath(), "mana_update_download.zip");
+            if (File.Exists(tempZipPath))
+            {
+                try { File.Delete(tempZipPath); } catch {}
+            }
+
+            try
+            {
+                using (WebClient client = new WebClient())
+                {
+                    // GitHub API/Download からダウンロードするため、User-Agent が必須
+                    client.Headers.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 ElectronUpdater");
+                    
+                    // TLS1.2/1.3 などのセキュリティプロトコル強制（GitHub等のSSL接続用）
+                    ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12 | SecurityProtocolType.Tls11 | SecurityProtocolType.Tls;
+
+                    client.DownloadProgressChanged += (s, e) => {
+                        // 進捗の 70% をダウンロードフェーズにあてる
+                        progressBar.Value = (int)(e.ProgressPercentage * 0.7);
+                        lblProgressDesc.Text = string.Format("Downloading latest update... {0}%", e.ProgressPercentage);
+                    };
+
+                    client.DownloadFileCompleted += async (s, e) => {
+                        if (e.Error != null)
+                        {
+                            MessageBox.Show("Failed to download update:\n" + e.Error.Message, "Update Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                            Application.Exit();
+                            return;
+                        }
+
+                        // ダウンロード成功。上書き展開フェーズ（残り30%）
+                        lblProgressDesc.Text = "Applying update files...";
+                        progressBar.Value = 80;
+                        
+                        await ApplyUpdateFromZipAsync(tempZipPath);
+                    };
+
+                    client.DownloadFileAsync(new Uri(updateDownloadUrl), tempZipPath);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Update download failed:\n" + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                Application.Exit();
+            }
+        }
+
+        private async System.Threading.Tasks.Task ApplyUpdateFromZipAsync(string zipPath)
+        {
+            try
+            {
+                // 既存プロセスの強制終了 (書き換えブロック防止)
+                Process[] processes = Process.GetProcessesByName("Mana Resonance");
+                foreach (var process in processes)
+                {
+                    try { process.Kill(); process.WaitForExit(3000); } catch {}
+                }
+
+                progressBar.Value = 90;
+
+                // ZIP上書き解凍
+                string targetDir = defaultInstallPath;
+                await System.Threading.Tasks.Task.Run(() => {
+                    using (ZipArchive archive = ZipFile.OpenRead(zipPath))
+                    {
+                        foreach (ZipArchiveEntry entry in archive.Entries)
+                        {
+                            if (string.IsNullOrEmpty(entry.Name)) continue;
+
+                            string destPath = Path.Combine(targetDir, entry.FullName);
+                            string destSubDir = Path.GetDirectoryName(destPath);
+
+                            if (!Directory.Exists(destSubDir))
+                            {
+                                Directory.CreateDirectory(destSubDir);
+                            }
+
+                            entry.ExtractToFile(destPath, true);
+                        }
+                    }
+                });
+
+                progressBar.Value = 95;
+
+                // 一時ファイルの削除
+                try { File.Delete(zipPath); } catch {}
+
+                progressBar.Value = 100;
+                lblProgressDesc.Text = "Update completed successfully!";
+                await System.Threading.Tasks.Task.Delay(500);
+
+                // アプリの自動再起動
+                string mainExe = Path.Combine(targetDir, "Mana Resonance.exe");
+                if (File.Exists(mainExe))
+                {
+                    Process.Start(mainExe);
+                }
+
+                Application.Exit();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Failed to apply update:\n" + ex.Message, "Update Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                Application.Exit();
+            }
+        }
     }
 
     static class Program
@@ -481,12 +624,23 @@ namespace ManaResonanceInstall
         static void Main(string[] args)
         {
             bool isSilent = false;
-            foreach (string arg in args)
+            bool isUpdate = false;
+            string downloadUrl = "";
+
+            for (int i = 0; i < args.Length; i++)
             {
-                if (arg.Equals("/silent", StringComparison.OrdinalIgnoreCase) || 
-                    arg.Equals("/verysilent", StringComparison.OrdinalIgnoreCase))
+                if (args[i].Equals("/silent", StringComparison.OrdinalIgnoreCase) || 
+                    args[i].Equals("/verysilent", StringComparison.OrdinalIgnoreCase))
                 {
                     isSilent = true;
+                }
+                else if (args[i].Equals("/update", StringComparison.OrdinalIgnoreCase))
+                {
+                    isUpdate = true;
+                    if (i + 1 < args.Length)
+                    {
+                        downloadUrl = args[i + 1];
+                    }
                 }
             }
 
@@ -496,10 +650,12 @@ namespace ManaResonanceInstall
             {
                 ProcessStartInfo psi = new ProcessStartInfo();
                 psi.FileName = Application.ExecutablePath;
-                if (isSilent)
-                {
-                    psi.Arguments = "/silent";
-                }
+                
+                string arguments = "";
+                if (isSilent) arguments += "/silent ";
+                if (isUpdate) arguments += "/update \"" + downloadUrl + "\"";
+                
+                psi.Arguments = arguments.Trim();
                 psi.Verb = "runas"; // 管理者権限への昇格を要求する
                 try
                 {
@@ -524,7 +680,7 @@ namespace ManaResonanceInstall
 
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
-            Application.Run(new InstallerForm());
+            Application.Run(new InstallerForm(isUpdate, downloadUrl));
         }
 
         private static void RunSilentInstall()

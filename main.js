@@ -170,10 +170,11 @@ function checkForUpdates() {
         if (isNewerVersion(currentVersion, latestVersion)) {
           console.log(`新しいバージョンが利用可能です: v${latestVersion} (現在: v${currentVersion})`);
           
-          // 適切なダウンロードアセットを探す
+          // 適切なダウンロードアセットを探す (Windowsの場合は app.zip または exe)
           let asset = null;
           if (process.platform === 'win32') {
-            asset = release.assets.find(a => a.name.endsWith('.exe'));
+            // app.zip があれば優先し、なければ .exe インストーラーを対象とする
+            asset = release.assets.find(a => a.name.endsWith('app.zip')) || release.assets.find(a => a.name.endsWith('.exe'));
           } else if (process.platform === 'darwin') {
             asset = release.assets.find(a => a.name.endsWith('.zip') || a.name.endsWith('.dmg'));
           }
@@ -181,13 +182,32 @@ function checkForUpdates() {
           if (asset) {
             dialog.showMessageBox(mainWindow, {
               type: 'info',
-              buttons: ['ダウンロードして適用', '後で'],
+              buttons: ['今すぐアップデート', '後で'],
               title: 'アップデートのご案内',
               message: `新しいバージョン (v${latestVersion}) が見つかりました。`,
-              detail: 'バックグラウンドで最新版をダウンロードし、完了後に再起動して適用します。'
+              detail: 'C#アップデーターウィンドウが開き、全自動でダウンロードとインストールを実行します。'
             }).then((result) => {
               if (result.response === 0) {
-                downloadUpdate(asset.browser_download_url, asset.name, latestVersion);
+                if (process.platform === 'win32') {
+                  const updaterPath = path.join(path.dirname(process.execPath), 'updater.exe');
+                  if (fs.existsSync(updaterPath)) {
+                    // updater.exe を起動し、ダウンロードURLを渡してアプリを終了
+                    const child = spawn(updaterPath, ['/update', asset.browser_download_url], {
+                      detached: true,
+                      stdio: 'ignore'
+                    });
+                    child.unref();
+                    app.quit();
+                  } else {
+                    // updater.exe がない場合はブラウザでダウンロードページを開いて終了
+                    shell.openExternal(release.html_url);
+                    app.quit();
+                  }
+                } else if (process.platform === 'darwin') {
+                  // macOSの場合はブラウザでダウンロードリンクを開いて終了
+                  shell.openExternal(asset.browser_download_url);
+                  app.quit();
+                }
               }
             });
           }
@@ -201,7 +221,7 @@ function checkForUpdates() {
   });
 }
 
-// バージョン比較ヘルパー (例: '1.0.0' と '1.0.1' の比較)
+// バージョン比較ヘルパー
 function isNewerVersion(current, latest) {
   const c = current.split('.').map(Number);
   const l = latest.split('.').map(Number);
@@ -212,87 +232,5 @@ function isNewerVersion(current, latest) {
     if (cv > lv) return false;
   }
   return false;
-}
-
-// アップデートアセットのダウンロードと適用
-function downloadUpdate(url, filename, version) {
-  const tempDir = os.tmpdir();
-  const destPath = path.join(tempDir, filename);
-
-  const file = fs.createWriteStream(destPath);
-  
-  if (mainWindow) {
-    mainWindow.webContents.send('update-download-start');
-  }
-
-  // リダイレクトに対応したダウンロードハンドラー
-  const download = (targetUrl) => {
-    https.get(targetUrl, { headers: { 'User-Agent': 'Electron' } }, (response) => {
-      if (response.statusCode === 302 || response.statusCode === 301) {
-        // リダイレクト追従
-        download(response.headers.location);
-        return;
-      }
-
-      if (response.statusCode !== 200) {
-        console.error(`ダウンロードエラー (ステータスコード: ${response.statusCode})`);
-        file.close();
-        fs.unlink(destPath, () => {});
-        if (mainWindow) mainWindow.webContents.send('update-download-error');
-        return;
-      }
-
-      const totalBytes = parseInt(response.headers['content-length'], 10) || 0;
-      let downloadedBytes = 0;
-
-      response.on('data', (chunk) => {
-        downloadedBytes += chunk.length;
-        if (totalBytes > 0 && mainWindow) {
-          const percent = Math.round((downloadedBytes / totalBytes) * 100);
-          mainWindow.webContents.send('update-download-progress', percent);
-        }
-      });
-
-      response.pipe(file);
-
-      file.on('finish', () => {
-        file.close(() => {
-          console.log('ダウンロードが完了しました:', destPath);
-          applyUpdate(destPath, version);
-        });
-      });
-    }).on('error', (err) => {
-      console.error('ダウンロード中にネットワークエラーが発生しました:', err.message);
-      file.close();
-      fs.unlink(destPath, () => {});
-      if (mainWindow) mainWindow.webContents.send('update-download-error');
-    });
-  };
-
-  download(url);
-}
-
-// アップデートの適用実行
-function applyUpdate(filePath, version) {
-  if (process.platform === 'win32') {
-    // Windowsの場合はサイレント上書き引数を渡して即座に終了 (バックグラウンドで上書きされ、新バージョンが自動起動します)
-    const child = spawn(filePath, ['/silent'], {
-      detached: true,
-      stdio: 'ignore'
-    });
-    child.unref();
-    app.quit();
-  } else if (process.platform === 'darwin') {
-    // macOSの場合は保存先ディレクトリを Finder で開き、ユーザーに上書きを促す
-    shell.showItemInFolder(filePath);
-    dialog.showMessageBox(mainWindow, {
-      type: 'info',
-      title: 'macOS版のアップデート適用方法',
-      message: 'ダウンロードした最新のファイルをApplicationsフォルダにドラッグして上書きしてください。',
-      buttons: ['了解']
-    }).then(() => {
-      app.quit();
-    });
-  }
 }
 
