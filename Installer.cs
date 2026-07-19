@@ -462,10 +462,10 @@ namespace ManaResonanceInstall
                 using (RegistryKey key = parent.CreateSubKey("ManaResonance"))
                 {
                     key.SetValue("DisplayName", "Mana Resonance");
-                    key.SetValue("ApplicationVersion", "1.0.0");
+                    key.SetValue("ApplicationVersion", "1.0.2");
                     key.SetValue("Publisher", "Mana Resonance Studio");
                     key.SetValue("DisplayIcon", iconPath);
-                    key.SetValue("DisplayVersion", "1.0.0");
+                    key.SetValue("DisplayVersion", "1.0.2");
                     key.SetValue("InstallLocation", installDir);
                     key.SetValue("UninstallString", uninstallerPath);
                     key.SetValue("NoModify", 1);
@@ -664,10 +664,10 @@ namespace ManaResonanceInstall
                     using (RegistryKey key = parent.CreateSubKey("ManaResonance"))
                     {
                         key.SetValue("DisplayName", "Mana Resonance");
-                        key.SetValue("ApplicationVersion", "1.0.1");
+                        key.SetValue("ApplicationVersion", "1.0.2");
                         key.SetValue("Publisher", "Mana Resonance Studio");
                         key.SetValue("DisplayIcon", iconPath);
-                        key.SetValue("DisplayVersion", "1.0.1");
+                        key.SetValue("DisplayVersion", "1.0.2");
                         key.SetValue("InstallLocation", installDir);
                         key.SetValue("UninstallString", uninstallerPath);
                         key.SetValue("NoModify", 1);
