@@ -1852,3 +1852,29 @@ function analyzeChromaAndEstimateChord() {
     chordDisplay.textContent = '--';
   }
 }
+
+// BETA UPDATES (プレリリース自動検出) トグル状態の同期・保存
+(function() {
+  try {
+    const { ipcRenderer } = require('electron');
+    const betaToggle = document.getElementById('beta-update-toggle');
+    
+    if (betaToggle) {
+      // 保存された設定値があればロード (デフォルトは false)
+      const savedVal = localStorage.getItem('allowPrerelease') === 'true';
+      betaToggle.checked = savedVal;
+      
+      // メインプロセスへ初期設定値を送信
+      ipcRenderer.send('set-allow-prerelease', savedVal);
+
+      // トグルスイッチ変更イベントの監視
+      betaToggle.addEventListener('change', function() {
+        const isChecked = this.checked;
+        localStorage.setItem('allowPrerelease', isChecked);
+        ipcRenderer.send('set-allow-prerelease', isChecked);
+      });
+    }
+  } catch (e) {
+    console.warn('Beta update settings load failed:', e);
+  }
+})();

@@ -40,6 +40,12 @@
           音声/動画ファイルをドラッグ＆ドロップ
         </div>
 
+        <!-- ベータ/プレリリース検出トグル -->
+        <label class="flex items-center space-x-1.5 cursor-pointer select-none text-[11px] bg-purple-950/20 hover:bg-purple-950/40 border border-purple-900/30 text-purple-400 rounded-xl px-3.5 py-2 font-semibold transition-all mr-2" title="プレリリース（開発中ベータバージョン）も自動アップデートの検知対象に含めます。">
+          <input type="checkbox" id="beta-update-toggle" class="rounded border-purple-800 text-purple-600 focus:ring-0 focus:ring-offset-0 bg-slate-950 w-3.5 h-3.5 cursor-pointer">
+          <span class="ml-1 tracking-wider text-[9px]">BETA UPDATES</span>
+        </label>
+
         <!-- 手動再接続ボタン (ヘッドホン切り替え等で音が途切れた際のリスタート用) -->
         <button id="btn-reconnect" class="flex items-center space-x-1.5 bg-purple-600/15 hover:bg-purple-600/25 border border-purple-500/30 text-purple-300 rounded-xl px-4 py-2 text-xs font-semibold select-none transition-colors" title="ヘッドホン接続や出力デバイス変更等で音声解析が止まってしまった場合に、システム音声入力を強制的に再取得して修復します。">
           <span>🔄</span>

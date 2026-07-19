@@ -65,9 +65,6 @@ app.whenReady().then(() => {
 
   createWindow();
 
-  // 自動アップデートチェックを実行
-  setTimeout(checkForUpdates, 3000); // 起動3秒後にチェック開始
-
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
       createWindow();
@@ -78,6 +75,21 @@ app.whenReady().then(() => {
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit();
+  }
+});
+
+let allowPrerelease = false;
+let hasCheckedUpdates = false;
+
+// IPC経由でベータアップデートの許可設定を受信・保存
+ipcMain.on('set-allow-prerelease', (event, value) => {
+  allowPrerelease = value;
+  console.log('プレリリース検出設定が更新されました:', allowPrerelease);
+
+  // 起動時の初回設定受信直後にのみ、自動アップデートチェックをトリガーする
+  if (!hasCheckedUpdates) {
+    hasCheckedUpdates = true;
+    setTimeout(checkForUpdates, 1500); // 起動直後のロード完了に合わせて少し待ってから実行
   }
 });
 
@@ -146,7 +158,6 @@ function checkForUpdates() {
     return;
   }
 
-  const allowPrerelease = updater.allowPrerelease === true;
   const pathUrl = allowPrerelease
     ? `/repos/${updater.owner}/${updater.repo}/releases`
     : `/repos/${updater.owner}/${updater.repo}/releases/latest`;
