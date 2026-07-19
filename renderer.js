@@ -121,7 +121,7 @@ let ctxSpectrogram = null;
 let ctxPitchTracker = null;
 let ctxSpectrum = null;
 let ctxParticles = null;
-let pitchHistory = [];
+let scrollPitchHistory = [];
 const MAX_PITCH_HISTORY = 250;
 let spectrogramHistory = [];
 const MAX_SPEC_HISTORY = 180;
@@ -1039,17 +1039,17 @@ function drawPitchTracker() {
   ctxPitchTracker.fillRect(0, 0, cssWidth, cssHeight);
 
   // 履歴配列に最新ピッチを追加 (音がないフレームは0)
-  pitchHistory.push(lastValidF0 > 0 ? lastValidF0 : 0);
-  if (pitchHistory.length > MAX_PITCH_HISTORY) {
-    pitchHistory.shift();
+  scrollPitchHistory.push(lastValidF0 > 0 ? lastValidF0 : 0);
+  if (scrollPitchHistory.length > MAX_PITCH_HISTORY) {
+    scrollPitchHistory.shift();
   }
 
   const minMidi = 36;
   const maxMidi = 96;
 
   // 履歴配列の全ドットを左から右へ描画 (自動スクロール)
-  for (let i = 0; i < pitchHistory.length; i++) {
-    const f0 = pitchHistory[i];
+  for (let i = 0; i < scrollPitchHistory.length; i++) {
+    const f0 = scrollPitchHistory[i];
     if (f0 <= 0) continue; // 音がない箇所は描画スキップ
 
     const midiNoteNum = 12 * Math.log2(f0 / 440) + 69;
