@@ -221,11 +221,15 @@ function downloadUpdate(url, filename, version) {
 
   const file = fs.createWriteStream(destPath);
   
+  if (mainWindow) {
+    mainWindow.webContents.send('update-download-start');
+  }
+
   // リダイレクトに対応したダウンロードハンドラー
   const download = (targetUrl) => {
     https.get(targetUrl, { headers: { 'User-Agent': 'Electron' } }, (response) => {
       if (response.statusCode === 302 || response.statusCode === 301) {
-        // リダイレクト追従 (GitHub Releasesのファイルは通常S3などにリダイレクトされます)
+        // リダイレクト追従
         download(response.headers.location);
         return;
       }
@@ -234,8 +238,20 @@ function downloadUpdate(url, filename, version) {
         console.error(`ダウンロードエラー (ステータスコード: ${response.statusCode})`);
         file.close();
         fs.unlink(destPath, () => {});
+        if (mainWindow) mainWindow.webContents.send('update-download-error');
         return;
       }
+
+      const totalBytes = parseInt(response.headers['content-length'], 10) || 0;
+      let downloadedBytes = 0;
+
+      response.on('data', (chunk) => {
+        downloadedBytes += chunk.length;
+        if (totalBytes > 0 && mainWindow) {
+          const percent = Math.round((downloadedBytes / totalBytes) * 100);
+          mainWindow.webContents.send('update-download-progress', percent);
+        }
+      });
 
       response.pipe(file);
 
@@ -249,6 +265,7 @@ function downloadUpdate(url, filename, version) {
       console.error('ダウンロード中にネットワークエラーが発生しました:', err.message);
       file.close();
       fs.unlink(destPath, () => {});
+      if (mainWindow) mainWindow.webContents.send('update-download-error');
     });
   };
 
@@ -257,35 +274,25 @@ function downloadUpdate(url, filename, version) {
 
 // アップデートの適用実行
 function applyUpdate(filePath, version) {
-  dialog.showMessageBox(mainWindow, {
-    type: 'question',
-    buttons: ['再起動して適用', '後で'],
-    title: 'アップデートの準備完了',
-    message: `Mana Resonance v${version} のダウンロードが完了しました。`,
-    detail: '「再起動して適用」を押すと、アプリを終了して新しいバージョンを適用します。'
-  }).then((result) => {
-    if (result.response === 0) {
-      if (process.platform === 'win32') {
-        // Windowsの場合はSetupインストーラーを起動
-        const child = spawn(filePath, [], {
-          detached: true,
-          stdio: 'ignore'
-        });
-        child.unref();
-        app.quit();
-      } else if (process.platform === 'darwin') {
-        // macOSの場合は保存先ディレクトリを Finder で開き、ユーザーに上書きを促す
-        shell.showItemInFolder(filePath);
-        dialog.showMessageBox(mainWindow, {
-          type: 'info',
-          title: 'macOS版のアップデート適用方法',
-          message: 'ダウンロードした最新のファイルをApplicationsフォルダにドラッグして上書きしてください。',
-          buttons: ['了解']
-        }).then(() => {
-          app.quit();
-        });
-      }
-    }
-  });
+  if (process.platform === 'win32') {
+    // Windowsの場合はサイレント上書き引数を渡して即座に終了 (バックグラウンドで上書きされ、新バージョンが自動起動します)
+    const child = spawn(filePath, ['/silent'], {
+      detached: true,
+      stdio: 'ignore'
+    });
+    child.unref();
+    app.quit();
+  } else if (process.platform === 'darwin') {
+    // macOSの場合は保存先ディレクトリを Finder で開き、ユーザーに上書きを促す
+    shell.showItemInFolder(filePath);
+    dialog.showMessageBox(mainWindow, {
+      type: 'info',
+      title: 'macOS版のアップデート適用方法',
+      message: 'ダウンロードした最新のファイルをApplicationsフォルダにドラッグして上書きしてください。',
+      buttons: ['了解']
+    }).then(() => {
+      app.quit();
+    });
+  }
 }
 

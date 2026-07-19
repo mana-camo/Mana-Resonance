@@ -123,6 +123,8 @@ let ctxSpectrum = null;
 let ctxParticles = null;
 let pitchTrackerBuffer = null;
 let pitchCtx = null;
+let spectrogramBuffer = null;
+let spectroCtx = null;
 let lastTime = performance.now();
 let frameCount = 0;
 
@@ -1742,3 +1744,30 @@ function analyzeChromaAndEstimateChord() {
     chordDisplay.textContent = '--';
   }
 }
+
+// 自動アップデートのダウンロード進捗表示イベント監視
+(function() {
+  try {
+    const { ipcRenderer } = require('electron');
+    
+    ipcRenderer.on('update-download-start', () => {
+      const overlay = document.getElementById('update-overlay');
+      if (overlay) overlay.style.display = 'flex';
+    });
+
+    ipcRenderer.on('update-download-progress', (event, percent) => {
+      const bar = document.getElementById('update-progress-bar');
+      const text = document.getElementById('update-progress-text');
+      if (bar) bar.style.width = percent + '%';
+      if (text) text.textContent = percent + '%';
+    });
+
+    ipcRenderer.on('update-download-error', () => {
+      alert('Failed to download the update from GitHub. Please check your connection.');
+      const overlay = document.getElementById('update-overlay');
+      if (overlay) overlay.style.display = 'none';
+    });
+  } catch (e) {
+    console.warn('Electron IPC is disabled or unavailable.', e);
+  }
+})();

@@ -69,7 +69,7 @@ try {
   }
 
   // リソースとして app.zip と uninstaller.exe の両方をエイリアス付きで埋め込む
-  const cscInstallCmd = `"${cscPath}" /target:winexe /out:"${outputSetupExe}" /win32icon:"${iconPath}" /resource:"${archiveFile}",app.zip /resource:"${uninstallerExe}",uninstaller.exe /reference:System.Windows.Forms.dll /reference:System.IO.Compression.FileSystem.dll "${installerSrc}"`;
+  const cscInstallCmd = `"${cscPath}" /target:winexe /out:"${outputSetupExe}" /win32icon:"${iconPath}" /resource:"${archiveFile}",app.zip /resource:"${uninstallerExe}",uninstaller.exe /reference:System.Windows.Forms.dll /reference:System.IO.Compression.dll /reference:System.IO.Compression.FileSystem.dll "${installerSrc}"`;
   runCmd(cscInstallCmd);
 
   if (!fs.existsSync(outputSetupExe)) {

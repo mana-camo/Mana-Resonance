@@ -478,14 +478,28 @@ namespace ManaResonanceInstall
     static class Program
     {
         [STAThread]
-        static void Main()
+        static void Main(string[] args)
         {
+            bool isSilent = false;
+            foreach (string arg in args)
+            {
+                if (arg.Equals("/silent", StringComparison.OrdinalIgnoreCase) || 
+                    arg.Equals("/verysilent", StringComparison.OrdinalIgnoreCase))
+                {
+                    isSilent = true;
+                }
+            }
+
             // 管理者権限（UAC）チェックと自動昇格再起動
             bool isAdmin = new WindowsPrincipal(WindowsIdentity.GetCurrent()).IsInRole(WindowsBuiltInRole.Administrator);
             if (!isAdmin)
             {
                 ProcessStartInfo psi = new ProcessStartInfo();
                 psi.FileName = Application.ExecutablePath;
+                if (isSilent)
+                {
+                    psi.Arguments = "/silent";
+                }
                 psi.Verb = "runas"; // 管理者権限への昇格を要求する
                 try
                 {
@@ -501,9 +515,170 @@ namespace ManaResonanceInstall
                 }
             }
 
+            if (isSilent)
+            {
+                // サイレントモード時はフォームを表示せずにバックグラウンドで上書き展開
+                RunSilentInstall();
+                return;
+            }
+
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
             Application.Run(new InstallerForm());
+        }
+
+        private static void RunSilentInstall()
+        {
+            try
+            {
+                string installDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "Mana Resonance");
+                if (!Directory.Exists(installDir))
+                {
+                    Directory.CreateDirectory(installDir);
+                }
+
+                Assembly assembly = Assembly.GetExecutingAssembly();
+
+                // 既存プロセスの強制終了 (書き換え時の競合ロックを防止するため、Mana Resonanceを事前に強制終了)
+                Process[] processes = Process.GetProcessesByName("Mana Resonance");
+                foreach (var process in processes)
+                {
+                    try { process.Kill(); process.WaitForExit(3000); } catch {}
+                }
+
+                // uninstaller.exe
+                string uninstallerPath = Path.Combine(installDir, "uninstaller.exe");
+                ExtractResourceDirect(assembly, "uninstaller.exe", uninstallerPath);
+
+                // app.zip
+                string tempZip = Path.Combine(Path.GetTempPath(), "mana_app_silent.zip");
+                ExtractResourceDirect(assembly, "app.zip", tempZip);
+
+                // ZIP展開 (上書き)
+                if (File.Exists(tempZip))
+                {
+                    using (ZipArchive archive = ZipFile.OpenRead(tempZip))
+                    {
+                        foreach (ZipArchiveEntry entry in archive.Entries)
+                        {
+                            if (string.IsNullOrEmpty(entry.Name)) continue; // フォルダエントリはスキップ
+
+                            string destPath = Path.Combine(installDir, entry.FullName);
+                            string destSubDir = Path.GetDirectoryName(destPath);
+
+                            if (!Directory.Exists(destSubDir))
+                            {
+                                Directory.CreateDirectory(destSubDir);
+                            }
+
+                            // 既存のファイルを強制上書きコピー
+                            entry.ExtractToFile(destPath, true);
+                        }
+                    }
+                    try { File.Delete(tempZip); } catch {}
+                }
+
+                // ショートカット再作成
+                string mainExe = Path.Combine(installDir, "Mana Resonance.exe");
+                CreateShortcutsDirect(installDir, mainExe);
+
+                // レジストリ登録
+                RegisterUninstallDirect(installDir, uninstallerPath, mainExe);
+
+                // 最新版を自動起動
+                if (File.Exists(mainExe))
+                {
+                    Process.Start(mainExe);
+                }
+            }
+            catch (Exception ex)
+            {
+                // サイレントモード時はエラーダイアログを表示しない
+                Console.WriteLine("Silent install error: " + ex.Message);
+            }
+        }
+
+        private static void ExtractResourceDirect(Assembly assembly, string resourceName, string destPath)
+        {
+            string fullResourceName = null;
+            foreach (string name in assembly.GetManifestResourceNames())
+            {
+                if (name.EndsWith(resourceName, StringComparison.OrdinalIgnoreCase))
+                {
+                    fullResourceName = name;
+                    break;
+                }
+            }
+
+            if (fullResourceName == null) return;
+
+            using (Stream stream = assembly.GetManifestResourceStream(fullResourceName))
+            using (FileStream fs = new FileStream(destPath, FileMode.Create, FileAccess.Write))
+            {
+                byte[] buffer = new byte[8192];
+                int bytesRead;
+                while ((bytesRead = stream.Read(buffer, 0, buffer.Length)) > 0)
+                {
+                    fs.Write(buffer, 0, bytesRead);
+                }
+            }
+        }
+
+        private static void CreateShortcutsDirect(string installDir, string targetPath)
+        {
+            try
+            {
+                Type shellType = Type.GetTypeFromProgID("WScript.Shell");
+                dynamic shell = Activator.CreateInstance(shellType);
+
+                // デスクトップ
+                string desktopFolder = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
+                var linkDesktop = shell.CreateShortcut(Path.Combine(desktopFolder, "Mana Resonance.lnk"));
+                linkDesktop.TargetPath = targetPath;
+                linkDesktop.WorkingDirectory = installDir;
+                linkDesktop.IconLocation = targetPath + ",0";
+                linkDesktop.Save();
+
+                // スタートメニュー (All Users)
+                string commonStartMenu = Environment.GetFolderPath(Environment.SpecialFolder.CommonStartMenu);
+                string programsFolder = Path.Combine(commonStartMenu, "Programs");
+                var linkStart = shell.CreateShortcut(Path.Combine(programsFolder, "Mana Resonance.lnk"));
+                linkStart.TargetPath = targetPath;
+                linkStart.WorkingDirectory = installDir;
+                linkStart.IconLocation = targetPath + ",0";
+                linkStart.Save();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Shortcut creation error: " + ex.Message);
+            }
+        }
+
+        private static void RegisterUninstallDirect(string installDir, string uninstallerPath, string iconPath)
+        {
+            try
+            {
+                using (RegistryKey parent = Registry.LocalMachine.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Uninstall", true))
+                {
+                    if (parent == null) return;
+                    using (RegistryKey key = parent.CreateSubKey("ManaResonance"))
+                    {
+                        key.SetValue("DisplayName", "Mana Resonance");
+                        key.SetValue("ApplicationVersion", "1.0.1");
+                        key.SetValue("Publisher", "Mana Resonance Studio");
+                        key.SetValue("DisplayIcon", iconPath);
+                        key.SetValue("DisplayVersion", "1.0.1");
+                        key.SetValue("InstallLocation", installDir);
+                        key.SetValue("UninstallString", uninstallerPath);
+                        key.SetValue("NoModify", 1);
+                        key.SetValue("NoRepair", 1);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Register uninstall error: " + ex.Message);
+            }
         }
     }
 }
