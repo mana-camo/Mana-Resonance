@@ -600,17 +600,19 @@ function updateLoop(timestamp) {
     lastTime = timestamp;
   }
 
-  if (!audioCtx || audioCtx.state === 'suspended') return;
+  // 音声解析処理は audioCtx が稼働中のみ実行
+  if (audioCtx && audioCtx.state === 'running') {
+    analyzeDrumBeats();
+    analyzeVocalPitch();
+    analyzeChromaAndEstimateChord();
+  }
 
-  // 各種分析値の処理
-  analyzeDrumBeats();
-  analyzeVocalPitch();
+  // 描画処理は audioCtx の有無に関わらず 100% 常時実行 (背景・ガイドライン・タイトルを常に表示)
   drawSpectrogram();
   drawPitchTracker();
   drawSpectrum();
   draw3BandSpectrum();
   drawParticles();
-  analyzeChromaAndEstimateChord();
 }
 
 // 3バンドドラムビート分析
@@ -1094,6 +1096,21 @@ function drawSpectrogramMac() {
   ctxSpectrogram.setTransform(1, 0, 0, 1, 0, 0);
   ctxSpectrogram.clearRect(0, 0, canvasSpectrogram.width, canvasSpectrogram.height);
   ctxSpectrogram.drawImage(macOffscreenCanvas, 0, 0);
+
+  const cssW = canvasSpectrogram.clientWidth;
+  const cssH = canvasSpectrogram.clientHeight;
+  ctxSpectrogram.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctxSpectrogram.fillStyle = '#818cf8';
+  ctxSpectrogram.font = 'bold 10px monospace';
+  ctxSpectrogram.textAlign = 'left';
+  ctxSpectrogram.fillText('COMPANION PERSPECTIVE', 12, 18);
+
+  ctxSpectrogram.fillStyle = 'rgba(255, 255, 255, 0.4)';
+  ctxSpectrogram.font = '9px monospace';
+  ctxSpectrogram.textAlign = 'right';
+  ctxSpectrogram.fillText('C6 (1047Hz)', cssW - 12, 18);
+  ctxSpectrogram.fillText('C4 (262Hz)', cssW - 12, cssH / 2);
+  ctxSpectrogram.fillText('C2 (65Hz)', cssW - 12, cssH - 8);
 }
 
 function drawSpectrogramWin() {
@@ -1148,6 +1165,20 @@ function drawSpectrogramWin() {
 
   ctxSpectrogram.clearRect(0, 0, width, height);
   ctxSpectrogram.drawImage(winSpectrogramBuffer, 0, 0);
+
+  const dprVal = window.devicePixelRatio || 1;
+  ctxSpectrogram.setTransform(dprVal, 0, 0, dprVal, 0, 0);
+  ctxSpectrogram.fillStyle = '#818cf8';
+  ctxSpectrogram.font = 'bold 10px monospace';
+  ctxSpectrogram.textAlign = 'left';
+  ctxSpectrogram.fillText('COMPANION PERSPECTIVE', 12, 18);
+
+  ctxSpectrogram.fillStyle = 'rgba(255, 255, 255, 0.4)';
+  ctxSpectrogram.font = '9px monospace';
+  ctxSpectrogram.textAlign = 'right';
+  ctxSpectrogram.fillText('C6 (1047Hz)', width - 12, 18);
+  ctxSpectrogram.fillText('C4 (262Hz)', width - 12, height / 2);
+  ctxSpectrogram.fillText('C2 (65Hz)', width - 12, height - 8);
 }
 
 
@@ -1207,6 +1238,12 @@ function drawPitchTrackerMac() {
 
     ctxPitchTracker.fillText(item.label, cssWidth - 12, y - 4);
   });
+
+  // タイトルバッジ直書き
+  ctxPitchTracker.fillStyle = '#a855f7';
+  ctxPitchTracker.font = 'bold 10px monospace';
+  ctxPitchTracker.textAlign = 'left';
+  ctxPitchTracker.fillText('VOCAL PITCH TRACKER', 12, 18);
 
   const dotXRatio = cssWidth / MAC_MAX_HISTORY;
   const numDots = scrollPitchHistory.length;
@@ -1301,6 +1338,12 @@ function drawPitchTrackerWin() {
 
     ctxPitchTracker.fillText(item.label, width - 12, y - 4);
   });
+
+  // タイトルバッジ直書き
+  ctxPitchTracker.fillStyle = '#a855f7';
+  ctxPitchTracker.font = 'bold 10px monospace';
+  ctxPitchTracker.textAlign = 'left';
+  ctxPitchTracker.fillText('VOCAL PITCH TRACKER', 12, 18);
 }
 
 // 背景を漂う光学的な屈折円オブジェクト
@@ -1379,6 +1422,12 @@ function drawSpectrum() {
 
   ctxSpectrum.fillStyle = '#020205';
   ctxSpectrum.fillRect(0, 0, width, height);
+
+  // タイトル直書き
+  ctxSpectrum.fillStyle = '#38bdf8';
+  ctxSpectrum.font = 'bold 10px monospace';
+  ctxSpectrum.textAlign = 'left';
+  ctxSpectrum.fillText('LOG HZ SPECTRUM (30Hz - 20kHz)', 12, 18);
 
   const data = new Uint8Array(spectrumAnalyser.frequencyBinCount);
   spectrumAnalyser.getByteFrequencyData(data);
