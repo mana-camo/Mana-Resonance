@@ -196,6 +196,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   setupMuteEvent();
   setupDeviceChangeListener();
   setupReconnectEvent();
+  setupWavRecorder();
   
   // アニメーションループ起動
   requestAnimationFrame(updateLoop);
@@ -578,6 +579,9 @@ function updateLoop(timestamp) {
   // 各種分析値の処理
   analyzeDrumBeats();
   analyzeVocalPitch();
+  analyzePitchAccuracy(lastValidF0);
+  analyzeBPM();
+  analyzeFormants();
   drawSpectrogram();
   drawPitchTracker();
   drawSpectrum();
@@ -1925,3 +1929,153 @@ function analyzeChromaAndEstimateChord() {
     console.warn('Beta update settings load failed:', e);
   }
 })();
+
+// --- 1. ピッチ精度 ＆ Cents チューナー ---
+function analyzePitchAccuracy(f0) {
+  const pitchCentsEl = document.getElementById('pitch-cents-display');
+  if (!pitchCentsEl) return;
+
+  if (f0 <= 0) {
+    pitchCentsEl.textContent = '--';
+    pitchCentsEl.className = 'text-xs font-mono font-bold text-slate-500';
+    return;
+  }
+
+  const midiNote = 12 * Math.log2(f0 / 440) + 69;
+  const exactMidi = Math.round(midiNote);
+  const targetFreq = 440 * Math.pow(2, (exactMidi - 69) / 12);
+  const cents = Math.round(1200 * Math.log2(f0 / targetFreq));
+
+  if (Math.abs(cents) <= 5) {
+    pitchCentsEl.textContent = `JUST (${cents > 0 ? '+' : ''}${cents}c)`;
+    pitchCentsEl.className = 'text-xs font-mono font-bold text-emerald-400 animate-pulse';
+  } else if (cents > 0) {
+    pitchCentsEl.textContent = `+${cents}c (HIGH)`;
+    pitchCentsEl.className = 'text-xs font-mono font-bold text-amber-400';
+  } else {
+    pitchCentsEl.textContent = `${cents}c (LOW)`;
+    pitchCentsEl.className = 'text-xs font-mono font-bold text-rose-400';
+  }
+}
+
+// --- 2. リアルタイム BPM 検出器 ---
+let bpmHistory = [];
+let lastBpmBeatTime = 0;
+let currentBPM = '--';
+function analyzeBPM() {
+  const bpmEl = document.getElementById('bpm-display');
+  if (!bpmEl || !lowAnalyser) return;
+
+  const data = new Uint8Array(lowAnalyser.frequencyBinCount);
+  lowAnalyser.getByteFrequencyData(data);
+
+  let lowEnergy = 0;
+  for (let i = 0; i < data.length; i++) lowEnergy += data[i];
+  lowEnergy /= data.length;
+
+  const now = performance.now();
+  if (lowEnergy > 160 && (now - lastBpmBeatTime) > 280) {
+    if (lastBpmBeatTime > 0) {
+      const intervalMs = now - lastBpmBeatTime;
+      const bpm = Math.round(60000 / intervalMs);
+      if (bpm >= 60 && bpm <= 200) {
+        bpmHistory.push(bpm);
+        if (bpmHistory.length > 8) bpmHistory.shift();
+
+        const avgBpm = Math.round(bpmHistory.reduce((a, b) => a + b, 0) / bpmHistory.length);
+        currentBPM = `${avgBpm} BPM`;
+        bpmEl.textContent = currentBPM;
+        bpmEl.className = 'text-xs font-mono font-bold text-cyan-400 animate-bounce';
+        setTimeout(() => { if (bpmEl) bpmEl.className = 'text-xs font-mono font-bold text-cyan-400'; }, 200);
+      }
+    }
+    lastBpmBeatTime = now;
+  }
+}
+
+// --- 3. フォルマント ＆ 声質解析 ---
+function analyzeFormants() {
+  const timbreEl = document.getElementById('timbre-display');
+  if (!timbreEl || !spectrumAnalyser) return;
+
+  if (lastValidF0 <= 0) {
+    timbreEl.textContent = '--';
+    return;
+  }
+
+  const data = new Uint8Array(spectrumAnalyser.frequencyBinCount);
+  spectrumAnalyser.getByteFrequencyData(data);
+  const sampleRate = audioCtx ? audioCtx.sampleRate : 44100;
+  const totalBins = data.length;
+
+  let f1Energy = 0, f2Energy = 0;
+  for (let i = 0; i < totalBins; i++) {
+    const freq = (i * sampleRate) / (totalBins * 2);
+    if (freq >= 300 && freq < 1000) f1Energy += data[i];
+    else if (freq >= 1000 && freq <= 3000) f2Energy += data[i];
+  }
+
+  const ratio = f2Energy / (f1Energy + 1);
+  if (ratio > 0.8) {
+    timbreEl.textContent = 'BRIGHT / CLEAR';
+    timbreEl.className = 'text-[10px] font-mono font-bold text-indigo-300';
+  } else {
+    timbreEl.textContent = 'DEEP / WARM';
+    timbreEl.className = 'text-[10px] font-mono font-bold text-purple-300';
+  }
+}
+
+// --- 4. 高音質 WAV 録音 ＆ 書き出し ---
+let audioRecorder = null;
+let audioChunks = [];
+let isRecActive = false;
+
+function setupWavRecorder() {
+  const recBtn = document.getElementById('btn-rec-wav');
+  if (!recBtn) return;
+
+  recBtn.addEventListener('click', () => {
+    if (!currentStream) {
+      alert("音声ストリームが準備できていません。");
+      return;
+    }
+
+    if (!isRecActive) {
+      audioChunks = [];
+      try {
+        audioRecorder = new MediaRecorder(currentStream);
+        audioRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); };
+        audioRecorder.onstop = exportWavFile;
+        audioRecorder.start();
+        isRecActive = true;
+
+        recBtn.innerHTML = `<span class="w-2 h-2 rounded-full bg-rose-500 animate-ping inline-block mr-1"></span>STOP REC`;
+        recBtn.className = "flex items-center space-x-1.5 bg-rose-600/30 hover:bg-rose-600/40 border border-rose-500 text-rose-300 rounded-xl px-3.5 py-2 text-xs font-bold transition-all";
+      } catch (err) {
+        console.error("Recorder error:", err);
+      }
+    } else {
+      if (audioRecorder && audioRecorder.state !== 'inactive') {
+        audioRecorder.stop();
+      }
+      isRecActive = false;
+      recBtn.innerHTML = `🔴 REC WAV`;
+      recBtn.className = "flex items-center space-x-1.5 bg-rose-600/20 hover:bg-rose-600/30 border border-rose-500/40 text-rose-300 rounded-xl px-3.5 py-2 text-xs font-bold transition-all shadow-sm";
+    }
+  });
+}
+
+function exportWavFile() {
+  if (audioChunks.length === 0) return;
+  const blob = new Blob(audioChunks, { type: 'audio/webm' });
+  const url = URL.createObjectURL(blob);
+
+  const d = new Date();
+  const dateStr = `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}_${String(d.getHours()).padStart(2,'0')}${String(d.getMinutes()).padStart(2,'0')}`;
+  
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `mana_recording_${dateStr}.webm`;
+  a.click();
+  URL.revokeObjectURL(url);
+}

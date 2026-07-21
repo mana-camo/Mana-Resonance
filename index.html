@@ -46,10 +46,16 @@
           <span class="ml-1 tracking-wider text-[9px]">BETA UPDATES</span>
         </label>
 
-        <!-- 手動再接続ボタン (ヘッドホン切り替え等で音が途切れた際のリスタート用) -->
+        <!-- 手動再接続ボタン -->
         <button id="btn-reconnect" class="flex items-center space-x-1.5 bg-purple-600/15 hover:bg-purple-600/25 border border-purple-500/30 text-purple-300 rounded-xl px-4 py-2 text-xs font-semibold select-none transition-colors" title="ヘッドホン接続や出力デバイス変更等で音声解析が止まってしまった場合に、システム音声入力を強制的に再取得して修復します。">
           <span>🔄</span>
           <span>RECONNECT</span>
+        </button>
+
+        <!-- 高音質WAV録音ボタン (新機能) -->
+        <button id="btn-rec-wav" class="flex items-center space-x-1.5 bg-rose-600/20 hover:bg-rose-600/30 border border-rose-500/40 text-rose-300 rounded-xl px-3.5 py-2 text-xs font-bold transition-all shadow-sm">
+          <span>🔴</span>
+          <span>REC WAV</span>
         </button>
 
         <!-- オーディオ再生/一時停止コントロール (ファイル用) -->
@@ -157,14 +163,32 @@
         <section class="lg:col-span-2 flex flex-col bg-slate-900/60 backdrop-blur-md rounded-2xl border border-white/5 p-5 space-y-4 overflow-hidden">
           
           <!-- 上部: 歌唱・ビートボックス解析ステータス -->
-          <div class="grid grid-cols-2 md:grid-cols-5 gap-3 bg-slate-950/60 p-4 rounded-xl border border-white/5 shrink-0">
-            <!-- 検出ピッチ -->
+          <div class="grid grid-cols-2 md:grid-cols-7 gap-3 bg-slate-950/60 p-4 rounded-xl border border-white/5 shrink-0">
+            <!-- 1. 検出ピッチ -->
             <div class="flex flex-col">
               <span class="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">Pitch (F0)</span>
               <span id="pitch-freq" class="text-xl font-bold font-mono text-purple-400">-- Hz</span>
               <span id="pitch-note" class="text-xs text-slate-300 font-mono">--</span>
             </div>
-            <!-- 声区 -->
+            <!-- 2. ピッチ精度 & Cents チューナー (新機能) -->
+            <div class="flex flex-col">
+              <span class="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">Pitch Tuner</span>
+              <span id="pitch-cents-display" class="text-xs font-mono font-bold text-slate-400 mt-1">--</span>
+              <span class="text-[9px] text-slate-500 font-mono mt-0.5">Accuracy</span>
+            </div>
+            <!-- 3. リアルタイム BPM 検出 (新機能) -->
+            <div class="flex flex-col">
+              <span class="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">BPM Meter</span>
+              <span id="bpm-display" class="text-xs font-mono font-bold text-cyan-400 mt-1">-- BPM</span>
+              <span class="text-[9px] text-slate-500 font-mono mt-0.5">Tempo</span>
+            </div>
+            <!-- 4. 声質 ＆ フォルマント解析 (新機能) -->
+            <div class="flex flex-col">
+              <span class="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">Timbre / Formant</span>
+              <span id="timbre-display" class="text-[10px] font-mono font-bold text-indigo-300 mt-1">--</span>
+              <span class="text-[9px] text-slate-500 font-mono mt-0.5">Formant F1/F2</span>
+            </div>
+            <!-- 5. 声区 -->
             <div class="flex flex-col justify-center">
               <span class="text-[10px] text-slate-500 uppercase tracking-wider font-semibold mb-1">Voice Register</span>
               <div class="flex space-x-1">
@@ -173,7 +197,7 @@
                 <span id="reg-head" class="reg-indicator text-[10px] bg-slate-900 border border-white/10 text-slate-600 px-1.5 py-0.5 rounded font-bold">HEAD</span>
               </div>
             </div>
-            <!-- ビブラート ＋ レーダー -->
+            <!-- 6. ビブラート ＋ レーダー -->
             <div class="flex flex-col">
               <span class="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">Vibrato Analysis</span>
               <div class="flex items-center justify-between mt-1 space-x-2">
@@ -187,7 +211,7 @@
                 <canvas id="canvas-vibrato-radar" class="w-10 h-10 bg-slate-900 rounded border border-white/10 shrink-0" width="40" height="40"></canvas>
               </div>
             </div>
-            <!-- 和音 ＋ キー判定 -->
+            <!-- 7. 和音 ＋ キー判定 & 音域 -->
             <div class="flex flex-col">
               <span class="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">Chord / Key</span>
               <span id="chord-display" class="text-base font-bold font-mono text-indigo-400 truncate mt-0.5">--</span>
