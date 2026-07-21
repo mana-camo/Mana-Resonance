@@ -173,6 +173,19 @@ const noteNames = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "
 
 // 初期化処理
 window.addEventListener('DOMContentLoaded', async () => {
+  // OSネイティブウィンドウ枠の適用調整
+  const titleBar = document.querySelector('.title-bar');
+  if (titleBar) {
+    if (!isMac) {
+      // Windows: OS標準のネイティブ枠が着くためHTMLタイトルバーは完全消去
+      titleBar.style.display = 'none';
+    } else {
+      // Mac: 純正のインセット信号機ボタンが出るため、偽ボタンを非表示
+      const controls = document.querySelector('.window-controls');
+      if (controls) controls.style.visibility = 'hidden';
+    }
+  }
+
   initCanvases();
   setupResizeHandler();
   await startAudioStream();
@@ -973,17 +986,27 @@ function drawSpectrogram() {
   }
 }
 
+let macOffscreenCanvas = null;
+let macOffscreenCtx = null;
+let macImageData = null;
+
 function drawSpectrogramMac() {
   if (!spectrumAnalyser || !ctxSpectrogram) return;
 
-  const cssWidth = canvasSpectrogram.clientWidth;
-  const cssHeight = canvasSpectrogram.clientHeight;
+  const width = canvasSpectrogram.clientWidth;
+  const height = canvasSpectrogram.clientHeight;
   const dpr = window.devicePixelRatio || 1;
 
-  ctxSpectrogram.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const renderWidth = Math.floor(width * dpr);
+  const renderHeight = Math.floor(height * dpr);
 
-  ctxSpectrogram.fillStyle = '#020205';
-  ctxSpectrogram.fillRect(0, 0, cssWidth, cssHeight);
+  if (!macOffscreenCanvas || macOffscreenCanvas.width !== renderWidth || macOffscreenCanvas.height !== renderHeight) {
+    macOffscreenCanvas = document.createElement('canvas');
+    macOffscreenCanvas.width = renderWidth;
+    macOffscreenCanvas.height = renderHeight;
+    macOffscreenCtx = macOffscreenCanvas.getContext('2d');
+    macImageData = macOffscreenCtx.createImageData(renderWidth, renderHeight);
+  }
 
   const data = new Uint8Array(spectrumAnalyser.frequencyBinCount);
   spectrumAnalyser.getByteFrequencyData(data);
@@ -993,9 +1016,9 @@ function drawSpectrogramMac() {
   const sampleRate = audioCtx.sampleRate;
   const totalBins = spectrumAnalyser.frequencyBinCount;
 
-  const frameEnergy = new Uint8Array(cssHeight);
-  for (let y = 0; y < cssHeight; y++) {
-    const normY = 1.0 - (y / cssHeight);
+  const frameEnergy = new Uint8Array(renderHeight);
+  for (let y = 0; y < renderHeight; y++) {
+    const normY = 1.0 - (y / renderHeight);
     const midiNote = minMidi + normY * (maxMidi - minMidi);
     const targetFreq = 440 * Math.pow(2, (midiNote - 69) / 12);
     const binIdx = Math.round((targetFreq * totalBins * 2) / sampleRate);
@@ -1007,12 +1030,19 @@ function drawSpectrogramMac() {
     spectrogramHistory.shift();
   }
 
-  const colWidth = cssWidth / MAC_MAX_HISTORY;
-  for (let i = 0; i < spectrogramHistory.length; i++) {
-    const energies = spectrogramHistory[i];
-    const x = i * colWidth;
+  // 32ビットピクセルバッファによる1フレーム1リクエストの超高速メモリ書き込み
+  const buf32 = new Uint32Array(macImageData.data.buffer);
+  buf32.fill(0xFF050202); // #020205 一括クリア
 
-    for (let y = 0; y < cssHeight; y++) {
+  const numCols = spectrogramHistory.length;
+  const colWidthPx = renderWidth / MAC_MAX_HISTORY;
+
+  for (let i = 0; i < numCols; i++) {
+    const energies = spectrogramHistory[i];
+    const startX = Math.floor(i * colWidthPx);
+    const endX = Math.min(renderWidth, Math.floor((i + 1) * colWidthPx + 1));
+
+    for (let y = 0; y < renderHeight; y++) {
       const energy = energies[y];
       if (energy <= 0) continue;
 
@@ -1020,12 +1050,22 @@ function drawSpectrogramMac() {
       const r = Math.round(6 + normEnergy * 230);
       const g = Math.round(18 + normEnergy * 54);
       const b = Math.round(50 + normEnergy * 103);
-      const a = 0.15 + normEnergy * 0.8;
+      const a = Math.round(38 + normEnergy * 204);
 
-      ctxSpectrogram.fillStyle = `rgba(${r}, ${g}, ${b}, ${a})`;
-      ctxSpectrogram.fillRect(x, y, colWidth + 0.5, 1.2);
+      const color32 = (a << 24) | (b << 16) | (g << 8) | r;
+
+      const rowOffset = y * renderWidth;
+      for (let x = startX; x < endX; x++) {
+        buf32[rowOffset + x] = color32;
+      }
     }
   }
+
+  macOffscreenCtx.putImageData(macImageData, 0, 0);
+
+  ctxSpectrogram.setTransform(1, 0, 0, 1, 0, 0);
+  ctxSpectrogram.clearRect(0, 0, canvasSpectrogram.width, canvasSpectrogram.height);
+  ctxSpectrogram.drawImage(macOffscreenCanvas, 0, 0);
 }
 
 function drawSpectrogramWin() {
@@ -1115,8 +1155,23 @@ function drawPitchTrackerMac() {
   const minMidi = 36;
   const maxMidi = 96;
 
+  // 背景ガイドライン描画
+  const guideMidis = [36, 48, 60, 72, 84, 96];
+  ctxPitchTracker.strokeStyle = 'rgba(255, 255, 255, 0.04)';
+  ctxPitchTracker.lineWidth = 1;
+  guideMidis.forEach(midi => {
+    const normY = (midi - minMidi) / (maxMidi - minMidi);
+    const y = cssHeight - (normY * cssHeight);
+    ctxPitchTracker.beginPath();
+    ctxPitchTracker.moveTo(0, y);
+    ctxPitchTracker.lineTo(cssWidth, y);
+    ctxPitchTracker.stroke();
+  });
+
   const dotXRatio = cssWidth / MAC_MAX_HISTORY;
-  for (let i = 0; i < scrollPitchHistory.length; i++) {
+  const numDots = scrollPitchHistory.length;
+
+  for (let i = 0; i < numDots; i++) {
     const item = scrollPitchHistory[i];
     const f0 = (item && typeof item === 'object') ? item.f0 : item;
     const confidence = (item && typeof item === 'object') ? item.confidence : 1.0;
@@ -1132,27 +1187,10 @@ function drawPitchTrackerMac() {
       // 確信度(0.35〜0.9)に応じてアルファ値を0.1〜1.0にマッピング
       const alpha = Math.max(0.1, Math.min(1.0, (confidence - 0.35) / (0.9 - 0.35)));
 
-      ctxPitchTracker.beginPath();
-      ctxPitchTracker.arc(dotX, dotY, 2, 0, 2 * Math.PI);
       ctxPitchTracker.fillStyle = `rgba(34, 197, 94, ${alpha})`;
-      ctxPitchTracker.shadowColor = `rgba(34, 197, 94, ${alpha})`;
-      ctxPitchTracker.shadowBlur = 4 * alpha;
-      ctxPitchTracker.fill();
-      ctxPitchTracker.shadowBlur = 0;
+      ctxPitchTracker.fillRect(dotX - 1.5, dotY - 1.5, 3, 3); // 非常に軽量な四角ドット
     }
   }
-
-  const guideMidis = [36, 48, 60, 72, 84, 96];
-  ctxPitchTracker.strokeStyle = 'rgba(255, 255, 255, 0.04)';
-  ctxPitchTracker.lineWidth = 1;
-  guideMidis.forEach(midi => {
-    const normY = (midi - minMidi) / (maxMidi - minMidi);
-    const y = cssHeight - (normY * cssHeight);
-    ctxPitchTracker.beginPath();
-    ctxPitchTracker.moveTo(0, y);
-    ctxPitchTracker.lineTo(cssWidth, y);
-    ctxPitchTracker.stroke();
-  });
 }
 
 function drawPitchTrackerWin() {

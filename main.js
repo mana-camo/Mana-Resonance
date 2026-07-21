@@ -8,20 +8,23 @@ const { spawn, exec } = require('child_process');
 let mainWindow;
 
 function createWindow() {
+  const isMac = process.platform === 'darwin';
+
   mainWindow = new BrowserWindow({
     width: 1280,
     height: 850,
     minWidth: 1000,
     minHeight: 650,
-    frame: false, // フレームレスウィンドウ (macOS風のカスタムタイトルバーを使用するため)
-    transparent: true, // 背景透過 (トランスルーセント効果用)
-    backgroundColor: '#00000000', // アルファチャネル付きの背景色
-    icon: path.join(__dirname, 'icon.png'), // アプリのアイコン適用
-    title: 'Mana Resonance', // ウィンドウのタイトル
+    frame: true, // OS標準のネイティブウィンドウ枠を使用
+    titleBarStyle: isMac ? 'hiddenInset' : 'default', // Macでは純正インセット丸ボタン、Winでは標準タイトルバー
+    trafficLightPosition: isMac ? { x: 12, y: 12 } : undefined,
+    backgroundColor: '#020205',
+    icon: path.join(__dirname, 'icon.png'),
+    title: 'Mana Resonance',
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: false,
-      webSecurity: false // ローカルファイルの読み込みやBlob URLの制限を緩和
+      webSecurity: false
     }
   });
 
