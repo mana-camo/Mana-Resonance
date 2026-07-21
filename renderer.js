@@ -314,22 +314,23 @@ async function startAudioStream() {
       outputGainNode.connect(audioCtx.destination);
     }
 
-    // 第1優先: getDisplayMedia (システム音声キャプチャ)
     try {
-      currentStream = await navigator.mediaDevices.getDisplayMedia({
-        audio: true,
-        video: true
-      });
-      currentStream.getVideoTracks().forEach(track => track.stop());
-      console.log('システム音声ストリームの接続に成功しました。');
-    } catch (err) {
-      console.warn('getDisplayMedia (システム音声) の取得に失敗しました。マイク入力へフォールバックします:', err);
-      // 第2優先 (フォールバック): マイク/標準入力
       currentStream = await navigator.mediaDevices.getUserMedia({
         audio: true,
         video: false
       });
-      console.log('マイク音声ストリームの接続に成功しました。');
+      console.log('オーディオストリーム（入力）の接続に成功しました。');
+    } catch (err) {
+      console.warn('getUserMedia 失敗。getDisplayMedia にフォールバックします:', err);
+      try {
+        currentStream = await navigator.mediaDevices.getDisplayMedia({
+          audio: true,
+          video: true
+        });
+        currentStream.getVideoTracks().forEach(track => track.stop());
+      } catch (e2) {
+        console.error('全オーディオストリーム取得失敗:', e2);
+      }
     }
 
     if (currentStream && currentStream.getAudioTracks().length > 0) {
@@ -1182,17 +1183,29 @@ function drawPitchTrackerMac() {
   const minMidi = 36;
   const maxMidi = 96;
 
-  // 背景ガイドライン描画
-  const guideMidis = [36, 48, 60, 72, 84, 96];
-  ctxPitchTracker.strokeStyle = 'rgba(255, 255, 255, 0.04)';
+  // 背景ガイドライン & 音名・Hz直書き描画 (2枚目画像スタイル)
+  const guideLabels = [
+    { midi: 36, label: 'C2 (65Hz)' },
+    { midi: 48, label: 'C3 (131Hz)' },
+    { midi: 60, label: 'C4 (262Hz)' },
+    { midi: 72, label: 'C5 (523Hz)' },
+    { midi: 84, label: 'C6 (1047Hz)' }
+  ];
+  ctxPitchTracker.strokeStyle = 'rgba(255, 255, 255, 0.05)';
   ctxPitchTracker.lineWidth = 1;
-  guideMidis.forEach(midi => {
-    const normY = (midi - minMidi) / (maxMidi - minMidi);
+  ctxPitchTracker.fillStyle = 'rgba(255, 255, 255, 0.35)';
+  ctxPitchTracker.font = '10px monospace';
+  ctxPitchTracker.textAlign = 'right';
+
+  guideLabels.forEach(item => {
+    const normY = (item.midi - minMidi) / (maxMidi - minMidi);
     const y = cssHeight - (normY * cssHeight);
     ctxPitchTracker.beginPath();
     ctxPitchTracker.moveTo(0, y);
     ctxPitchTracker.lineTo(cssWidth, y);
     ctxPitchTracker.stroke();
+
+    ctxPitchTracker.fillText(item.label, cssWidth - 12, y - 4);
   });
 
   const dotXRatio = cssWidth / MAC_MAX_HISTORY;
@@ -1265,16 +1278,28 @@ function drawPitchTrackerWin() {
   ctxPitchTracker.clearRect(0, 0, width, height);
   ctxPitchTracker.drawImage(winPitchTrackerBuffer, 0, 0);
 
-  const guideMidis = [36, 48, 60, 72, 84, 96];
-  ctxPitchTracker.strokeStyle = 'rgba(255, 255, 255, 0.04)';
+  const guideLabels = [
+    { midi: 36, label: 'C2 (65Hz)' },
+    { midi: 48, label: 'C3 (131Hz)' },
+    { midi: 60, label: 'C4 (262Hz)' },
+    { midi: 72, label: 'C5 (523Hz)' },
+    { midi: 84, label: 'C6 (1047Hz)' }
+  ];
+  ctxPitchTracker.strokeStyle = 'rgba(255, 255, 255, 0.05)';
   ctxPitchTracker.lineWidth = 1;
-  guideMidis.forEach(midi => {
-    const normY = (midi - minMidi) / (maxMidi - minMidi);
+  ctxPitchTracker.fillStyle = 'rgba(255, 255, 255, 0.35)';
+  ctxPitchTracker.font = '10px monospace';
+  ctxPitchTracker.textAlign = 'right';
+
+  guideLabels.forEach(item => {
+    const normY = (item.midi - minMidi) / (maxMidi - minMidi);
     const y = height - (normY * height);
     ctxPitchTracker.beginPath();
     ctxPitchTracker.moveTo(0, y);
     ctxPitchTracker.lineTo(width, y);
     ctxPitchTracker.stroke();
+
+    ctxPitchTracker.fillText(item.label, width - 12, y - 4);
   });
 }
 
