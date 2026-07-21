@@ -55,6 +55,9 @@ const btnRangeMode = document.getElementById('btn-range-mode');
 const canvasSpectrogram = document.getElementById('canvas-spectrogram');
 const canvasPitchTracker = document.getElementById('canvas-pitch-tracker');
 const canvasSpectrum = document.getElementById('canvas-spectrum');
+const canvas3Band = document.getElementById('canvas-3band');
+let ctx3Band = null;
+
 const beatPulseOuter = document.getElementById('beat-pulse-outer');
 const beatPulseInner = document.getElementById('beat-pulse-inner');
 const kickPeakDisplay = document.getElementById('kick-peak-display');
@@ -203,9 +206,10 @@ window.addEventListener('DOMContentLoaded', async () => {
 
 // Canvas初期化
 function initCanvases() {
-  ctxSpectrogram = canvasSpectrogram.getContext('2d');
-  ctxPitchTracker = canvasPitchTracker.getContext('2d');
-  ctxSpectrum = canvasSpectrum.getContext('2d');
+  if (canvasSpectrogram) ctxSpectrogram = canvasSpectrogram.getContext('2d');
+  if (canvasPitchTracker) ctxPitchTracker = canvasPitchTracker.getContext('2d');
+  if (canvasSpectrum) ctxSpectrum = canvasSpectrum.getContext('2d');
+  if (canvas3Band) ctx3Band = canvas3Band.getContext('2d');
   resizeCanvases();
 }
 
@@ -214,22 +218,36 @@ function resizeCanvases() {
   const dpr = window.devicePixelRatio || 1;
   
   // スペクトログラム
-  const rectG = canvasSpectrogram.parentElement.getBoundingClientRect();
-  canvasSpectrogram.width = rectG.width * dpr;
-  canvasSpectrogram.height = rectG.height * dpr;
-  ctxSpectrogram.setTransform(dpr, 0, 0, dpr, 0, 0);
+  if (canvasSpectrogram && canvasSpectrogram.parentElement) {
+    const rectG = canvasSpectrogram.parentElement.getBoundingClientRect();
+    canvasSpectrogram.width = Math.max(10, rectG.width * dpr);
+    canvasSpectrogram.height = Math.max(10, rectG.height * dpr);
+    if (ctxSpectrogram) ctxSpectrogram.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
 
   // ピッチトラッカー
-  const rectP = canvasPitchTracker.parentElement.getBoundingClientRect();
-  canvasPitchTracker.width = rectP.width * dpr;
-  canvasPitchTracker.height = rectP.height * dpr;
-  ctxPitchTracker.setTransform(dpr, 0, 0, dpr, 0, 0);
+  if (canvasPitchTracker && canvasPitchTracker.parentElement) {
+    const rectP = canvasPitchTracker.parentElement.getBoundingClientRect();
+    canvasPitchTracker.width = Math.max(10, rectP.width * dpr);
+    canvasPitchTracker.height = Math.max(10, rectP.height * dpr);
+    if (ctxPitchTracker) ctxPitchTracker.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
 
-  // スペクトラム
-  const rectS = canvasSpectrum.parentElement.getBoundingClientRect();
-  canvasSpectrum.width = rectS.width * dpr;
-  canvasSpectrum.height = rectS.height * dpr;
-  ctxSpectrum.setTransform(dpr, 0, 0, dpr, 0, 0);
+  // スペクトラム (Log Hz)
+  if (canvasSpectrum && canvasSpectrum.parentElement) {
+    const rectS = canvasSpectrum.parentElement.getBoundingClientRect();
+    canvasSpectrum.width = Math.max(10, rectS.width * dpr);
+    canvasSpectrum.height = Math.max(10, rectS.height * dpr);
+    if (ctxSpectrum) ctxSpectrum.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+
+  // 3-Band スペクトラム
+  if (canvas3Band && canvas3Band.parentElement) {
+    const rect3 = canvas3Band.parentElement.getBoundingClientRect();
+    canvas3Band.width = Math.max(10, rect3.width * dpr);
+    canvas3Band.height = Math.max(10, rect3.height * dpr);
+    if (ctx3Band) ctx3Band.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
 }
 
 function setupResizeHandler() {
@@ -296,22 +314,30 @@ async function startAudioStream() {
       outputGainNode.connect(audioCtx.destination);
     }
 
-    // getDisplayMedia を使用してシステム音声（デスクトップオーディオ）をキャプチャ
-    // メインプロセス側でDisplayMediaリクエストを自動承諾するハンドラを登録してあるため、画面共有ダイアログは非表示になります
-    currentStream = await navigator.mediaDevices.getDisplayMedia({
-      audio: true,
-      video: true
-    });
+    // 第1優先: getDisplayMedia (システム音声キャプチャ)
+    try {
+      currentStream = await navigator.mediaDevices.getDisplayMedia({
+        audio: true,
+        video: true
+      });
+      currentStream.getVideoTracks().forEach(track => track.stop());
+      console.log('システム音声ストリームの接続に成功しました。');
+    } catch (err) {
+      console.warn('getDisplayMedia (システム音声) の取得に失敗しました。マイク入力へフォールバックします:', err);
+      // 第2優先 (フォールバック): マイク/標準入力
+      currentStream = await navigator.mediaDevices.getUserMedia({
+        audio: true,
+        video: false
+      });
+      console.log('マイク音声ストリームの接続に成功しました。');
+    }
 
-    // 不要なビデオトラックを即座に停止・解放
-    currentStream.getVideoTracks().forEach(track => track.stop());
-    
-    // Web Audioノードの再構築
-    setupAudioNodes(audioCtx.createMediaStreamSource(currentStream));
-    console.log('システム音声ストリームの接続に成功しました。');
+    if (currentStream && currentStream.getAudioTracks().length > 0) {
+      setupAudioNodes(audioCtx.createMediaStreamSource(currentStream));
+    }
 
   } catch (err) {
-    console.error('デスクトップ音声の自動取得に失敗しました:', err);
+    console.error('音声ストリームの自動取得に最終失敗しました:', err);
   } finally {
     isReconnecting = false;
   }
@@ -581,6 +607,7 @@ function updateLoop(timestamp) {
   drawSpectrogram();
   drawPitchTracker();
   drawSpectrum();
+  draw3BandSpectrum();
   drawParticles();
   analyzeChromaAndEstimateChord();
 }
@@ -1925,3 +1952,80 @@ function analyzeChromaAndEstimateChord() {
     console.warn('Beta update settings load failed:', e);
   }
 })();
+
+// --- 3-Band Spectrum Analysis ---
+function draw3BandSpectrum() {
+  if (!spectrumAnalyser || !ctx3Band || !canvas3Band) return;
+
+  const width = canvas3Band.clientWidth;
+  const height = canvas3Band.clientHeight;
+  const dpr = window.devicePixelRatio || 1;
+
+  ctx3Band.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx3Band.fillStyle = '#020306';
+  ctx3Band.fillRect(0, 0, width, height);
+
+  const data = new Uint8Array(spectrumAnalyser.frequencyBinCount);
+  spectrumAnalyser.getByteFrequencyData(data);
+
+  const totalBins = data.length;
+  const sampleRate = audioCtx.sampleRate;
+
+  let lowSum = 0, lowCount = 0;
+  let midSum = 0, midCount = 0;
+  let highSum = 0, highCount = 0;
+
+  for (let i = 0; i < totalBins; i++) {
+    const freq = (i * sampleRate) / (totalBins * 2);
+    const val = data[i];
+    if (freq >= 20 && freq < 250) {
+      lowSum += val; lowCount++;
+    } else if (freq >= 250 && freq < 4000) {
+      midSum += val; midCount++;
+    } else if (freq >= 4000 && freq <= 20000) {
+      highSum += val; highCount++;
+    }
+  }
+
+  const lowAvg = lowCount > 0 ? (lowSum / lowCount) / 255 : 0;
+  const midAvg = midCount > 0 ? (midSum / midCount) / 255 : 0;
+  const highAvg = highCount > 0 ? (highSum / highCount) / 255 : 0;
+
+  const bands = [
+    { label: 'LOW (BASS)', val: lowAvg, color: '#38bdf8', grad: ['rgba(56, 189, 248, 0.2)', 'rgba(56, 189, 248, 0.9)'] },
+    { label: 'MID (VOCAL)', val: midAvg, color: '#c084fc', grad: ['rgba(192, 132, 252, 0.2)', 'rgba(192, 132, 252, 0.9)'] },
+    { label: 'HIGH (TREBLE)', val: highAvg, color: '#34d399', grad: ['rgba(52, 211, 153, 0.2)', 'rgba(52, 211, 153, 0.9)'] }
+  ];
+
+  const gap = 12;
+  const barWidth = (width - gap * 4) / 3;
+
+  bands.forEach((band, idx) => {
+    const x = gap + idx * (barWidth + gap);
+    const barH = band.val * (height - 30);
+    const y = height - 18 - barH;
+
+    // レール
+    ctx3Band.fillStyle = 'rgba(255, 255, 255, 0.05)';
+    ctx3Band.fillRect(x, 10, barWidth, height - 28);
+
+    // バー
+    if (barH > 0) {
+      const g = ctx3Band.createLinearGradient(0, height - 18, 0, Math.max(0, y));
+      g.addColorStop(0, band.grad[0]);
+      g.addColorStop(1, band.grad[1]);
+      ctx3Band.fillStyle = g;
+      ctx3Band.fillRect(x, y, barWidth, barH);
+
+      // 上部発光キャップ
+      ctx3Band.fillStyle = band.color;
+      ctx3Band.fillRect(x, y - 2, barWidth, 2);
+    }
+
+    // テキスト
+    ctx3Band.fillStyle = band.color;
+    ctx3Band.font = 'bold 9px monospace';
+    ctx3Band.textAlign = 'center';
+    ctx3Band.fillText(band.label, x + barWidth / 2, height - 5);
+  });
+}

@@ -10,7 +10,7 @@
 </head>
 <body class="overflow-hidden select-none bg-[#020306] text-slate-100 font-sans">
 
-  <!-- メインアプリレイアウト (左サイドバー + 右メインビュー) -->
+  <!-- メインアプリレイアウト -->
   <div class="app-container flex h-screen w-screen overflow-hidden relative">
 
     <!-- macOSドラッグ用ヘッダー -->
@@ -37,7 +37,7 @@
           </div>
         </div>
 
-        <!-- ナビゲーションメニュー -->
+        <!-- ナビゲーション -->
         <nav class="space-y-1.5 font-medium">
           <a href="#" class="nav-item active flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-xs font-bold text-white bg-purple-600/25 border border-purple-500/40 shadow-lg shadow-purple-900/30">
             <svg class="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
@@ -92,16 +92,16 @@
     <main class="flex-1 flex flex-col overflow-y-auto p-6 space-y-6 pt-10">
 
       <!-- ヘッダーアクションバー (ファイルドロップ＆コントロール) -->
-      <section class="liquid-card flex flex-col lg:flex-row items-center justify-between gap-4 p-3 shrink-0">
+      <section class="liquid-card flex items-center justify-between gap-4 p-3 shrink-0">
         
         <!-- ドラッグ＆ドロップ領域 -->
-        <div id="drop-zone" class="flex-1 flex items-center justify-center border-2 border-dashed border-white/15 rounded-xl py-2.5 px-4 hover:border-purple-400 hover:bg-purple-500/10 transition-all text-xs text-slate-300 font-bold cursor-pointer w-full">
+        <div id="drop-zone" class="flex-1 flex items-center justify-center border-2 border-dashed border-white/15 rounded-xl py-2 px-4 hover:border-purple-400 hover:bg-purple-500/10 transition-all text-xs text-slate-300 font-bold cursor-pointer w-full">
           <svg class="w-4 h-4 mr-2 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
           音声 / 動画ファイルをドラッグ＆ドロップして解析
         </div>
 
         <!-- ファイルプレイヤーコントロール -->
-        <div id="file-player-controls" class="hidden flex items-center space-x-3 bg-black/80 px-4 py-2 rounded-xl border border-white/15 w-full lg:w-auto">
+        <div id="file-player-controls" class="hidden flex items-center space-x-3 bg-black/80 px-4 py-2 rounded-xl border border-white/15 shrink-0">
           <span id="file-name" class="text-xs font-bold text-purple-300 max-w-[140px] truncate">No File</span>
           
           <div class="flex items-center space-x-2">
@@ -116,65 +116,61 @@
           </div>
         </div>
 
-        <!-- クイックアクション (録音 & ミュート) -->
+        <!-- ミュートボタン -->
         <div class="flex items-center space-x-2 shrink-0">
-          <button id="btn-record" class="flex items-center space-x-1.5 bg-rose-600/25 hover:bg-rose-600/35 border border-rose-500/50 text-rose-200 rounded-xl px-3.5 py-1.5 text-xs font-black transition-all">
-            <span class="w-2 h-2 rounded-full bg-rose-500 animate-ping inline-block mr-1"></span>
-            <span>録音</span>
-          </button>
-          <button id="btn-mute" class="bg-slate-800/80 hover:bg-slate-700 border border-white/15 text-slate-200 rounded-xl px-3.5 py-1.5 text-xs font-black transition-all">
+          <button id="btn-mute" class="bg-slate-800/80 hover:bg-slate-700 border border-white/15 text-slate-200 rounded-xl px-4 py-1.5 text-xs font-black transition-all">
             MUTE
           </button>
+          <button id="btn-record" class="hidden"></button> <!-- 後方互換用 -->
         </div>
       </section>
 
-      <!-- ヒーローセクション: ボーカルピッチトラッカー Panel -->
-      <section class="liquid-card p-4 relative overflow-hidden flex flex-col min-h-[250px]">
+      <!-- ヒーローセクション 1: ボーカルピッチトラッカー Panel (HZ・Note・Range表記を内部オーバーレイに内包！) -->
+      <section class="liquid-card p-3 relative overflow-hidden flex flex-col min-h-[260px]">
         
-        <!-- ヘッダー情報 -->
-        <div class="flex items-center justify-between z-10 mb-3">
-          <div class="flex items-center space-x-3">
-            <span class="text-xs font-black bg-purple-600/30 text-purple-300 border border-purple-500/40 rounded-lg px-2.5 py-1 uppercase tracking-wider shadow-sm">VOCAL PITCH TRACKER</span>
-            <span id="pitch-freq" class="text-xl font-black font-mono text-emerald-400 tracking-tight">-- Hz</span>
-            <span id="pitch-note" class="text-xs font-black font-mono text-slate-200 bg-black/60 px-2.5 py-0.5 rounded-md border border-white/10">--</span>
+        <!-- キャンバス容器 -->
+        <div class="flex-1 bg-black rounded-xl overflow-hidden border border-white/10 relative min-h-[240px]">
+          <canvas id="canvas-pitch-tracker" class="w-full h-full block"></canvas>
+          <canvas id="canvas-particles" class="w-full h-full block absolute top-0 left-0 pointer-events-none"></canvas>
+
+          <!-- 内部HUDオーバーレイ (左上: タイトル & ピッチHZ) -->
+          <div class="absolute top-3 left-3 z-20 flex items-center space-x-3 pointer-events-none">
+            <span class="text-[10px] font-black bg-purple-900/80 text-purple-300 border border-purple-500/50 rounded-md px-2 py-0.5 uppercase tracking-wider backdrop-blur-md">VOCAL PITCH TRACKER</span>
+            <span id="pitch-freq" class="text-xl font-black font-mono text-emerald-400 tracking-tight drop-shadow-md">-- Hz</span>
+            <span id="pitch-note" class="text-xs font-black font-mono text-slate-100 bg-black/80 px-2 py-0.5 rounded border border-white/20 backdrop-blur-md">--</span>
           </div>
 
-          <div class="flex items-center space-x-3">
-            <!-- 声区インジケーター (Chest / Mix / Head) -->
+          <!-- 内部HUDオーバーレイ (右上: 声区 & レンジ) -->
+          <div class="absolute top-3 right-3 z-20 flex items-center space-x-2 pointer-events-auto">
             <div class="flex space-x-1">
-              <span id="reg-chest" class="reg-indicator text-[10px] bg-black/60 border border-white/10 text-slate-500 px-2 py-0.5 rounded-md font-black">CHEST</span>
-              <span id="reg-mix" class="reg-indicator text-[10px] bg-black/60 border border-white/10 text-slate-500 px-2 py-0.5 rounded-md font-black">MIX</span>
-              <span id="reg-head" class="reg-indicator text-[10px] bg-black/60 border border-white/10 text-slate-500 px-2 py-0.5 rounded-md font-black">HEAD</span>
+              <span id="reg-chest" class="reg-indicator text-[9px] bg-black/80 border border-white/20 text-slate-400 px-1.5 py-0.5 rounded font-black">CHEST</span>
+              <span id="reg-mix" class="reg-indicator text-[9px] bg-black/80 border border-white/20 text-slate-400 px-1.5 py-0.5 rounded font-black">MIX</span>
+              <span id="reg-head" class="reg-indicator text-[9px] bg-black/80 border border-white/20 text-slate-400 px-1.5 py-0.5 rounded font-black">HEAD</span>
             </div>
 
-            <!-- ピッチレンジ -->
-            <div class="flex items-center space-x-2 bg-black/80 px-3 py-1 rounded-xl border border-white/10 text-xs">
-              <span class="text-[10px] text-slate-400 font-black uppercase">Range</span>
-              <span class="font-mono text-purple-300 font-black"><span id="range-min">--</span> ~ <span id="range-max">--</span></span>
+            <div class="flex items-center space-x-1.5 bg-black/80 px-2.5 py-0.5 rounded-lg border border-white/20 text-xs backdrop-blur-md">
+              <span class="text-[9px] text-slate-400 font-black uppercase">Range</span>
+              <span class="font-mono text-purple-300 font-black text-[11px]"><span id="range-min">--</span> ~ <span id="range-max">--</span></span>
               <span id="range-span" class="text-[9px] text-slate-400 font-mono">(--)</span>
-              <button id="btn-range-mode" class="text-[8px] bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-300 rounded px-1.5 py-0.5 font-bold font-mono transition-all ml-1">HIGH CONF</button>
-              <button id="btn-reset-range" class="text-[10px] text-slate-300 hover:text-purple-300 ml-1 font-bold">RESET</button>
+              <button id="btn-range-mode" class="text-[8px] bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-300 rounded px-1 py-0.5 font-bold font-mono transition-all">HIGH CONF</button>
+              <button id="btn-reset-range" class="text-[9px] text-slate-300 hover:text-purple-300 font-bold">RESET</button>
               <button id="btn-range-reset" class="hidden"></button>
             </div>
           </div>
         </div>
-
-        <!-- キャンバス容器 -->
-        <div class="flex-1 bg-black rounded-xl overflow-hidden border border-white/10 relative min-h-[170px]">
-          <canvas id="canvas-pitch-tracker" class="w-full h-full block"></canvas>
-          <canvas id="canvas-particles" class="w-full h-full block absolute top-0 left-0 pointer-events-none"></canvas>
-        </div>
       </section>
 
-      <!-- ヒーローセクション: LOG HZ SPECTRUM (対数スペクトラムアナライザー Panel) ⚡ 復活！ -->
-      <section class="liquid-card p-4 relative overflow-hidden flex flex-col min-h-[220px]">
-        
-        <div class="flex items-center justify-between z-10 mb-2">
-          <div class="flex items-center space-x-2">
-            <span class="text-xs font-black bg-cyan-600/30 text-cyan-300 border border-cyan-500/40 rounded-lg px-2.5 py-1 uppercase tracking-wider shadow-sm">LOG HZ SPECTRUM</span>
-            <span class="text-[10px] font-bold text-slate-400 font-mono">Logarithmic Realtime Equalizer Curve (30Hz - 20kHz)</span>
+      <!-- ヒーローセクション 2: LOG HZ SPECTRUM (対数スペクトラム Panel) -->
+      <section class="liquid-card p-3 relative overflow-hidden flex flex-col min-h-[200px]">
+        <div class="flex-1 bg-black rounded-xl overflow-hidden border border-white/10 relative min-h-[180px]">
+          <canvas id="canvas-spectrum" class="w-full h-full block"></canvas>
+
+          <!-- 内部HUDオーバーレイ -->
+          <div class="absolute top-3 left-3 z-20 flex items-center space-x-2 pointer-events-none">
+            <span class="text-[10px] font-black bg-cyan-900/80 text-cyan-300 border border-cyan-500/50 rounded-md px-2 py-0.5 uppercase tracking-wider backdrop-blur-md">LOG HZ SPECTRUM</span>
+            <span class="text-[9px] font-bold text-slate-400 font-mono">Logarithmic Curve (30Hz - 20kHz)</span>
           </div>
-          <div class="text-[9px] text-slate-400 font-mono space-x-2 font-bold">
+          <div class="absolute top-3 right-3 z-20 text-[9px] text-slate-400 font-mono space-x-2 font-bold pointer-events-none">
             <span>50Hz</span>
             <span>200Hz</span>
             <span>1kHz</span>
@@ -182,36 +178,42 @@
             <span>20kHz</span>
           </div>
         </div>
-
-        <!-- LOG HZ キャンバス容器 -->
-        <div class="flex-1 bg-black rounded-xl overflow-hidden border border-white/10 relative min-h-[160px]">
-          <canvas id="canvas-spectrum" class="w-full h-full block"></canvas>
-        </div>
       </section>
 
-      <!-- ヒーローセクション: Companion Perspective (スペクトログラム) Panel -->
-      <section class="liquid-card p-4 relative overflow-hidden flex flex-col min-h-[200px]">
-        
-        <div class="flex items-center justify-between z-10 mb-2">
-          <span class="text-xs font-black bg-indigo-600/30 text-indigo-300 border border-indigo-500/40 rounded-lg px-2.5 py-1 uppercase tracking-wider shadow-sm">COMPANION PERSPECTIVE</span>
-          <div class="text-[9px] text-slate-400 font-mono space-x-3 font-bold">
+      <!-- ヒーローセクション 3: Companion Perspective (スペクトログラム Panel) -->
+      <section class="liquid-card p-3 relative overflow-hidden flex flex-col min-h-[190px]">
+        <div class="flex-1 bg-black rounded-xl overflow-hidden border border-white/10 relative min-h-[170px]">
+          <canvas id="canvas-spectrogram" class="w-full h-full block"></canvas>
+
+          <!-- 内部HUDオーバーレイ -->
+          <div class="absolute top-3 left-3 z-20 pointer-events-none">
+            <span class="text-[10px] font-black bg-indigo-900/80 text-indigo-300 border border-indigo-500/50 rounded-md px-2 py-0.5 uppercase tracking-wider backdrop-blur-md">COMPANION PERSPECTIVE</span>
+          </div>
+          <div class="absolute top-3 right-3 z-20 text-[9px] text-slate-400 font-mono space-x-3 font-bold pointer-events-none">
             <span>C6 (1047Hz)</span>
             <span>C4 (262Hz)</span>
             <span>C2 (65Hz)</span>
           </div>
         </div>
-
-        <div class="flex-1 bg-black rounded-xl overflow-hidden border border-white/10 relative min-h-[140px]">
-          <canvas id="canvas-spectrogram" class="w-full h-full block"></canvas>
-        </div>
       </section>
 
-      <!-- 下部 2カラムグリッド: Vibrato, Chord & Key Cards -->
-      <section class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <!-- 下部 3カラムグリッド: 3-Band Spectrum (復活！), Vibrato Radar, Chord & Key Cards -->
+      <section class="grid grid-cols-1 md:grid-cols-3 gap-6">
 
-        <!-- Card 1: Vibrato Detection Radar -->
-        <div class="liquid-card p-4 flex flex-col justify-between">
-          <div class="flex items-center justify-between mb-2">
+        <!-- Card 1: 3-Band Spectrum (復活！) -->
+        <div class="liquid-card p-3 flex flex-col justify-between">
+          <div class="flex items-center justify-between mb-1.5">
+            <span class="text-[10px] font-black text-slate-300 uppercase tracking-wider block">3-Band Spectrum</span>
+            <span class="text-[9px] text-slate-500 font-mono font-bold">Low / Mid / High</span>
+          </div>
+          <div class="h-28 bg-black rounded-xl border border-white/10 overflow-hidden relative">
+            <canvas id="canvas-3band" class="w-full h-full block"></canvas>
+          </div>
+        </div>
+
+        <!-- Card 2: Vibrato Detection Radar -->
+        <div class="liquid-card p-3 flex flex-col justify-between">
+          <div class="flex items-center justify-between mb-1.5">
             <span class="text-[10px] font-black text-slate-300 uppercase tracking-wider block">Vibrato Radar</span>
             <div id="vibrato-status" class="text-xs font-black text-slate-400 flex items-center space-x-1.5">
               <span id="vibrato-dot" class="w-2 h-2 rounded-full bg-slate-600 inline-block"></span>
@@ -219,22 +221,22 @@
             </div>
           </div>
           
-          <div class="flex items-center justify-between space-x-4">
-            <div class="w-28 h-28 bg-black rounded-xl border border-white/10 overflow-hidden shrink-0">
+          <div class="flex items-center justify-between space-x-3">
+            <div class="w-24 h-24 bg-black rounded-xl border border-white/10 overflow-hidden shrink-0">
               <canvas id="canvas-vibrato-radar" class="w-full h-full block"></canvas>
             </div>
-            <div class="flex-1 text-right space-y-1">
-              <span class="text-[10px] font-bold text-slate-400 block uppercase">Frequency & Depth</span>
-              <p id="vibrato-details" class="text-sm font-mono font-black text-purple-300">-- Hz / -- cents</p>
+            <div class="flex-1 text-right">
+              <span class="text-[9px] font-bold text-slate-400 block uppercase">Frequency & Depth</span>
+              <p id="vibrato-details" class="text-xs font-mono font-black text-purple-300">-- Hz / -- cents</p>
             </div>
           </div>
         </div>
 
-        <!-- Card 2: Realtime Key & Chord -->
-        <div class="liquid-card p-4 flex flex-col justify-between">
-          <span class="text-[10px] font-black text-slate-300 uppercase tracking-wider mb-2 block">Realtime Chord & Key</span>
-          <div class="bg-black/90 rounded-xl border border-white/10 p-3 flex flex-col items-center justify-center h-28 space-y-1">
-            <div id="chord-display" class="text-4xl font-black font-mono text-purple-400 tracking-wider">--</div>
+        <!-- Card 3: Realtime Key & Chord -->
+        <div class="liquid-card p-3 flex flex-col justify-between">
+          <span class="text-[10px] font-black text-slate-300 uppercase tracking-wider mb-1.5 block">Realtime Chord & Key</span>
+          <div class="bg-black/90 rounded-xl border border-white/10 p-3 flex flex-col items-center justify-center h-24 space-y-1">
+            <div id="chord-display" class="text-3xl font-black font-mono text-purple-400 tracking-wider">--</div>
             <div id="key-display" class="text-xs font-black text-slate-300 font-mono">Key: --</div>
           </div>
         </div>
