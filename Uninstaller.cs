@@ -152,7 +152,7 @@ namespace ManaResonanceUninstall
             confirmPanel.Controls.Add(lblConfirmDesc);
             this.Controls.Add(confirmPanel);
 
-            // 2. アンインストール進行中画面 (緑色プログレスバー)
+            // 2. アンインストール進行画面 (緑色プログレスバー)
             progressPanel.Size = new Size(520, 200);
             progressPanel.Location = new Point(0, 61);
             progressPanel.Visible = false;
@@ -165,7 +165,7 @@ namespace ManaResonanceUninstall
             progressBar.Location = new Point(25, 90);
             progressBar.Size = new Size(470, 26);
             progressBar.Style = ProgressBarStyle.Continuous;
-            progressBar.ForeColor = Color.FromArgb(34, 197, 94); // 緑色進行バー
+            progressBar.ForeColor = Color.FromArgb(34, 197, 94);
 
             progressPanel.Controls.Add(lblProgressDesc);
             progressPanel.Controls.Add(progressBar);
@@ -265,10 +265,33 @@ namespace ManaResonanceUninstall
             }
         }
 
+        // ★ アプリが起動中であるかを検出 ★
+        private bool IsAppRunning()
+        {
+            Process[] processes = Process.GetProcessesByName("Mana Resonance");
+            if (processes != null && processes.Length > 0) return true;
+
+            Process[] electronProcesses = Process.GetProcessesByName("electron");
+            if (electronProcesses != null && electronProcesses.Length > 0) return true;
+
+            return false;
+        }
+
         private async void BtnAction_Click(object sender, EventArgs e)
         {
             if (currentStep == 0)
             {
+                // ★ 実行中制限: アプリが起動している場合はブロックメッセージを出して進行を遮断 ★
+                if (IsAppRunning())
+                {
+                    string msg = language == "JA"
+                        ? "Mana Resonance が現在実行中です。\nアンインストールを続行するには、アプリを終了してください。"
+                        : "Mana Resonance is currently running.\nPlease close the application before proceeding with uninstallation.";
+                    string title = language == "JA" ? "実行中エラー" : "Application Running";
+                    MessageBox.Show(msg, title, MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+
                 ShowStep(1);
                 await PerformUninstallation();
             }
@@ -282,11 +305,9 @@ namespace ManaResonanceUninstall
         {
             try
             {
-                // 段階的プログレスバー進行 (緑色バーアニメーション)
                 progressBar.Value = 15;
                 await Task.Delay(350);
 
-                // 1. デスクトップ＆スタートメニューショートカットの削除
                 string desktopPath = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
                 string desktopLink = Path.Combine(desktopPath, "Mana Resonance.lnk");
                 if (File.Exists(desktopLink)) try { File.Delete(desktopLink); } catch { }
@@ -298,7 +319,6 @@ namespace ManaResonanceUninstall
                 progressBar.Value = 45;
                 await Task.Delay(400);
 
-                // 2. レジストリの消去
                 try
                 {
                     using (RegistryKey uninstallKey = Registry.LocalMachine.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Uninstall", true))
@@ -311,7 +331,6 @@ namespace ManaResonanceUninstall
                 progressBar.Value = 75;
                 await Task.Delay(400);
 
-                // 3. アプリケーション本体ファイルの消去
                 progressBar.Value = 95;
                 await Task.Delay(300);
 
@@ -331,7 +350,6 @@ namespace ManaResonanceUninstall
         {
             try
             {
-                // 自滅クリーンアップバッチファイルの生成 ＆ 実行
                 string tempBatch = Path.Combine(Path.GetTempPath(), "mana_resonance_cleanup.bat");
                 string script = string.Format(
                     "@echo off\r\n" +
@@ -356,7 +374,6 @@ namespace ManaResonanceUninstall
         [STAThread]
         public static void Main()
         {
-            // 管理者権限昇格チェック
             bool isAdmin = new WindowsPrincipal(WindowsIdentity.GetCurrent()).IsInRole(WindowsBuiltInRole.Administrator);
             if (!isAdmin)
             {

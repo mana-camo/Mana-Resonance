@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mana Resonance - Settings</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="index.css">
+</head>
+<body class="bg-[#080b14] text-white select-none p-6 font-['Outfit',sans-serif] h-screen flex flex-col justify-between box-border">
+
+  <!-- ヘッダー -->
+  <div class="border-b border-white/10 pb-4">
+    <div class="flex items-center space-x-3">
+      <div class="w-10 h-10 rounded-2xl bg-purple-600/30 border border-purple-500/50 flex items-center justify-center text-purple-300">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path></svg>
+      </div>
+      <div>
+        <h1 id="title-settings" class="text-xl font-black tracking-tight text-white">APPLICATION SETTINGS</h1>
+        <p id="sub-settings" class="text-xs text-slate-400">System options and preference management</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- 設定項目リスト -->
+  <div class="space-y-4 my-auto">
+    
+    <!-- 1. 表示言語選択 -->
+    <div class="liquid-glass-card p-4 space-y-1.5">
+      <label id="lbl-lang" class="block text-xs font-bold text-white uppercase tracking-wider">DISPLAY LANGUAGE</label>
+      <p id="desc-lang" class="text-[11px] text-slate-400">Interface and setup wizard language</p>
+      <select id="select-lang" class="w-full bg-black/90 border border-white/20 text-purple-200 text-xs rounded-xl p-2.5 font-bold cursor-pointer outline-none focus:border-purple-500">
+        <option value="EN">English (Default)</option>
+        <option value="JA">日本語 (Japanese)</option>
+      </select>
+    </div>
+
+    <!-- 2. ベータアップデート受取トグル -->
+    <div class="liquid-glass-card p-4 flex items-center justify-between">
+      <div>
+        <span id="lbl-beta" class="block text-xs font-bold text-white uppercase tracking-wider">BETA UPDATES</span>
+        <span id="desc-beta" class="text-[11px] text-slate-400">Receive early experimental feature updates</span>
+      </div>
+      <input type="checkbox" id="toggle-beta" class="rounded border-purple-800 text-purple-600 focus:ring-0 bg-black w-4 h-4 cursor-pointer">
+    </div>
+
+    <!-- 3. 将来用機能拡張スロット -->
+    <div class="liquid-glass-card p-4 space-y-1 opacity-60">
+      <span id="lbl-audio" class="block text-xs font-bold text-slate-400 uppercase tracking-wider">AUDIO SENSITIVITY (FUTURE SLOT)</span>
+      <div class="text-[10px] text-purple-300 font-mono">Auto Noise Reduction: ENABLED</div>
+    </div>
+
+  </div>
+
+  <!-- 下部操作ボタン -->
+  <div class="border-t border-white/10 pt-4 flex items-center justify-between">
+    <span id="save-msg" class="hidden text-xs font-bold text-emerald-400 animate-pulse">✓ Saved Successfully</span>
+    <div class="flex items-center space-x-3 ml-auto">
+      <button id="btn-cancel" class="bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 font-bold text-xs px-4 py-2 rounded-xl transition-all">
+        CANCEL / キャンセル
+      </button>
+      <button id="btn-save" class="bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs px-5 py-2 rounded-xl shadow-lg transition-all active:scale-95">
+        SAVE SETTINGS / 設定を保存
+      </button>
+    </div>
+  </div>
+
+  <script src="settings.js"></script>
+</body>
+</html>

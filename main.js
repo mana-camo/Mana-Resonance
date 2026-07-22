@@ -81,18 +81,52 @@ app.on('window-all-closed', () => {
   }
 });
 
-let allowPrerelease = false;
-let hasCheckedUpdates = false;
+let settingsWindow = null;
+
+function createSettingsWindow() {
+  if (settingsWindow) {
+    settingsWindow.focus();
+    return;
+  }
+
+  settingsWindow = new BrowserWindow({
+    width: 620,
+    height: 520,
+    resizable: false,
+    parent: mainWindow,
+    modal: false, // 独立した別ウィンドウ
+    frame: true,
+    backgroundColor: '#080b14',
+    icon: path.join(__dirname, 'icon.png'),
+    title: 'Mana Resonance - Settings',
+    webPreferences: {
+      nodeIntegration: true,
+      contextIsolation: false,
+      webSecurity: false
+    }
+  });
+
+  settingsWindow.loadFile('settings.html');
+  settingsWindow.setMenuBarVisibility(false);
+
+  settingsWindow.on('closed', () => {
+    settingsWindow = null;
+  });
+}
+
+// 別ウィンドウで設定を開くIPC
+ipcMain.on('open-settings-window', () => {
+  createSettingsWindow();
+});
 
 // IPC経由でベータアップデートの許可設定を受信・保存
 ipcMain.on('set-allow-prerelease', (event, value) => {
   allowPrerelease = value;
   console.log('プレリリース検出設定が更新されました:', allowPrerelease);
 
-  // 起動時の初回設定受信直後にのみ、自動アップデートチェックをトリガーする
   if (!hasCheckedUpdates) {
     hasCheckedUpdates = true;
-    setTimeout(checkForUpdates, 1500); // 起動直後のロード完了に合わせて少し待ってから実行
+    setTimeout(checkForUpdates, 1500);
   }
 });
 
