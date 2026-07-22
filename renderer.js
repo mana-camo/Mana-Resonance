@@ -184,7 +184,7 @@ async function startAudioStream() {
 }
 
 // --------------------------------------------------------------------------
-// 4. 音高 (Pitch F0) 自己相関解析
+// 4. 音高 (Pitch F0) 自己相関解析 - PC音声対応強化版
 // --------------------------------------------------------------------------
 function analyzePitch() {
   if (!pitchAnalyser) return;
@@ -192,44 +192,60 @@ function analyzePitch() {
   const buffer = new Float32Array(pitchAnalyser.fftSize);
   pitchAnalyser.getFloatTimeDomainData(buffer);
 
+  // RMS計算
   let sum = 0;
   for (let i = 0; i < buffer.length; i++) sum += buffer[i] * buffer[i];
   const rms = Math.sqrt(sum / buffer.length);
 
-  if (rms < 0.015) {
+  // PC音声(getDisplayMedia)は音量が非常に小さい場合があるため閾値を極限まで下げる
+  if (rms < 0.0008) {
     lastValidF0 = 0;
     updatePitchUI(0, '--');
     return;
   }
 
-  const sampleRate = audioCtx.sampleRate;
-  const minPeriod = Math.floor(sampleRate / 1000);
-  const maxPeriod = Math.floor(sampleRate / 55);
+  // 信号を正規化することでgetDisplayMediaの音量差を吸収
+  const normalized = new Float32Array(buffer.length);
+  const scale = rms > 0 ? 1.0 / (rms * 8) : 1.0;
+  for (let i = 0; i < buffer.length; i++) {
+    normalized[i] = Math.max(-1, Math.min(1, buffer[i] * scale));
+  }
 
-  let bestCorr = 0;
+  const sampleRate = audioCtx.sampleRate;
+  // 範囲を広げて検出感度向上 (40Hz〜1200Hz)
+  const minPeriod = Math.floor(sampleRate / 1200);
+  const maxPeriod = Math.floor(sampleRate / 40);
+
+  // 正規化自己相関 (NSDF: Normalized Square Difference Function 近似)
+  let bestCorr = -1;
   let bestPeriod = -1;
 
   for (let period = minPeriod; period <= maxPeriod; period++) {
     let corr = 0;
-    for (let i = 0; i < buffer.length - period; i++) {
-      corr += buffer[i] * buffer[i + period];
+    let norm = 0;
+    const len = buffer.length - period;
+    for (let i = 0; i < len; i++) {
+      corr += normalized[i] * normalized[i + period];
+      norm += normalized[i] * normalized[i] + normalized[i + period] * normalized[i + period];
     }
-    corr /= (buffer.length - period);
+    // 正規化相関係数 (-1〜1)
+    const nsdf = norm > 0 ? (2 * corr) / norm : 0;
 
-    if (corr > bestCorr) {
-      bestCorr = corr;
+    if (nsdf > bestCorr) {
+      bestCorr = nsdf;
       bestPeriod = period;
     }
   }
 
-  if (bestPeriod > 0 && bestCorr > 0.1) {
+  // 閾値を大幅緩和 (0.1 → 0.05) してPC音楽でも検出可能にする
+  if (bestPeriod > 0 && bestCorr > 0.05) {
     const f0 = sampleRate / bestPeriod;
-    if (f0 >= 55 && f0 <= 1000) {
+    if (f0 >= 40 && f0 <= 1200) {
       lastValidF0 = f0;
 
       const midiNote = 12 * Math.log2(f0 / 440) + 69;
       const noteNames = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
-      const noteName = noteNames[Math.round(midiNote) % 12] + (Math.floor(Math.round(midiNote) / 12) - 1);
+      const noteName = noteNames[((Math.round(midiNote) % 12) + 12) % 12] + (Math.floor(Math.round(midiNote) / 12) - 1);
 
       updatePitchUI(f0, noteName);
       return;
