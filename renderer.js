@@ -595,7 +595,7 @@ function analyzeDrumBeats() {
 }
 
 // ==========================================================================
-// 8. Vocal Pitch Tracker (線の細さ・色の薄くなる距離を「少し近く」最適化した1.0.8流用描画)
+// 8. Vocal Pitch Tracker (ボーカル判定で濃く・非ボーカル判定で薄く描画)
 // ==========================================================================
 function drawPitchTracker() {
   if (!ctxPitchTracker || !canvasPitchTracker) return;
@@ -613,20 +613,17 @@ function drawPitchTracker() {
     winPitchCtx.fillRect(0, 0, width, height);
   }
 
-  // ★ 薄くなる（フェードアウトする）タイミングを「少しだけ前（右端近く）」に調整 ★
-  // スクリーン全体に極小アルファ (0.045) の漆黒幕を重ねることで、右端を出て少し進むと前にずれて自然に薄くなり始める
+  // スムーズな左スクロール (1.0.8 安定方式)
   winPitchCtx.drawImage(winPitchTrackerBuffer, -1.8, 0);
 
   const x = width - 1.8;
-  winPitchCtx.fillStyle = 'rgba(2, 3, 6, 0.045)'; // 少し前に薄くなり始める理想のフェードタイミング
-  winPitchCtx.fillRect(0, 0, width, height);
   winPitchCtx.fillStyle = '#020306';
   winPitchCtx.fillRect(x, 0, 1.8, height);
 
   const minMidi = 36;
   const maxMidi = 96;
 
-  // 1.0.8 発光ドット描画 (細いシャープなライン)
+  // ボーカル判定による濃淡制御描画
   if (lastValidF0 > 0) {
     const midiNoteNum = 12 * Math.log2(lastValidF0 / 440) + 69;
     if (midiNoteNum >= minMidi && midiNoteNum <= maxMidi) {
@@ -634,11 +631,21 @@ function drawPitchTracker() {
       const dotY = height - (normY * height);
       const currentX = width - 1;
 
+      const isVocal = (lastPitchConfidence >= 0.35); // 信頼度スコアによるボーカル判定
+
       winPitchCtx.beginPath();
-      winPitchCtx.arc(currentX, dotY, 1.6, 0, 2 * Math.PI);
-      winPitchCtx.fillStyle = '#22c55e';
-      winPitchCtx.shadowColor = '#22c55e';
-      winPitchCtx.shadowBlur = 3.5;
+      if (isVocal) {
+        // ★ ボーカル判定: 鮮やかな緑色でくっきり描画 ★
+        winPitchCtx.arc(currentX, dotY, 2.0, 0, 2 * Math.PI);
+        winPitchCtx.fillStyle = '#22c55e';
+        winPitchCtx.shadowColor = '#22c55e';
+        winPitchCtx.shadowBlur = 4.5;
+      } else {
+        // ★ 非ボーカル判定 (ノイズ/楽器等): 完全に消さず半透明に薄く描画 ★
+        winPitchCtx.arc(currentX, dotY, 1.2, 0, 2 * Math.PI);
+        winPitchCtx.fillStyle = 'rgba(34, 197, 94, 0.25)';
+        winPitchCtx.shadowBlur = 0;
+      }
       winPitchCtx.fill();
       winPitchCtx.shadowBlur = 0;
     }
@@ -737,7 +744,7 @@ function drawSpectrogram() {
 }
 
 // --------------------------------------------------------------------------
-// 10. Log Hz Spectrum
+// 10. Log Hz Spectrum (★ 送信画像2枚目完全一致 Peak発光球 ＆ ツールチップ)
 // --------------------------------------------------------------------------
 function drawSpectrum() {
   if (!ctxSpectrum || !canvasSpectrum) return;
@@ -777,6 +784,8 @@ function drawSpectrum() {
 
     const numPoints = 200;
     const rawPoints = [];
+    let maxVal = -1;
+    let peakIdx = -1;
 
     for (let i = 0; i <= numPoints; i++) {
       const normX = i / numPoints;
@@ -792,8 +801,13 @@ function drawSpectrum() {
       const v1 = b1 < data.length ? data[b1] : 0;
       const val = v0 * (1 - frac) + v1 * frac;
 
-      const y = h - (val / 255) * (h - 25) - 10;
-      rawPoints.push({ x, y });
+      if (val > maxVal) {
+        maxVal = val;
+        peakIdx = i;
+      }
+
+      const y = h - (val / 255) * (h - 35) - 10;
+      rawPoints.push({ x, y, val, freq });
     }
 
     const points = [];
@@ -805,7 +819,7 @@ function drawSpectrum() {
         sumY += rawPoints[idx].y;
         count++;
       }
-      points.push({ x: rawPoints[i].x, y: sumY / count });
+      points.push({ x: rawPoints[i].x, y: sumY / count, val: rawPoints[i].val, freq: rawPoints[i].freq });
     }
 
     ctxSpectrum.beginPath();
@@ -840,6 +854,65 @@ function drawSpectrum() {
     ctxSpectrum.strokeStyle = '#f43f5e';
     ctxSpectrum.lineWidth = 1.8;
     ctxSpectrum.stroke();
+
+    // ★ 送信画像2枚目完全再現: 一番音が大きい Peak 点の発光球 ＋ ツールチップパネル ★
+    if (peakIdx >= 0 && maxVal > 15) {
+      const peakPoint = points[peakIdx];
+      const pkX = peakPoint.x;
+      const pkY = peakPoint.y;
+
+      // 1. ピンク/マゼンタ発光球体 (Orb)
+      ctxSpectrum.shadowBlur = 14;
+      ctxSpectrum.shadowColor = '#f43f5e';
+
+      ctxSpectrum.beginPath();
+      ctxSpectrum.arc(pkX, pkY, 4.5, 0, Math.PI * 2);
+      ctxSpectrum.fillStyle = '#ffffff';
+      ctxSpectrum.fill();
+
+      ctxSpectrum.beginPath();
+      ctxSpectrum.arc(pkX, pkY, 7.0, 0, Math.PI * 2);
+      ctxSpectrum.fillStyle = 'rgba(244, 63, 94, 0.5)';
+      ctxSpectrum.fill();
+
+      ctxSpectrum.shadowBlur = 0; // リセット
+
+      // 2. ピーク情報計算 (dB | Hz | Note + Cent)
+      const db = Math.max(-100, Math.min(0, 20 * Math.log10(maxVal / 255)));
+      const peakHz = peakPoint.freq;
+      const midiNote = 12 * Math.log2(peakHz / 440) + 69;
+      const roundedMidi = Math.round(midiNote);
+      const targetFreq = 440 * Math.pow(2, (roundedMidi - 69) / 12);
+      const cents = Math.round(1200 * Math.log2(peakHz / targetFreq));
+      const octave = Math.floor(roundedMidi / 12) - 1;
+      const noteName = noteNames[((roundedMidi % 12) + 12) % 12];
+
+      const textStr = `${db.toFixed(1)} dB  |  ${peakHz.toFixed(1)} Hz  |  ${noteName}${octave} ${cents >= 0 ? '+' : ''}${cents}c`;
+
+      // 3. ブラック浮遊ツールチップパネルの描画
+      ctxSpectrum.font = '700 10px "JetBrains Mono", monospace';
+      const textWidth = ctxSpectrum.measureText(textStr).width;
+      const panelW = textWidth + 18;
+      const panelH = 22;
+      const panelX = Math.max(10, Math.min(w - panelW - 10, pkX - panelW / 2));
+      const panelY = Math.min(h - panelH - 8, pkY + 14);
+
+      // パネル背景 (送信画像そっくりの枠線付きダークグラフィック)
+      ctxSpectrum.fillStyle = 'rgba(8, 12, 22, 0.92)';
+      ctxSpectrum.strokeStyle = 'rgba(255, 255, 255, 0.18)';
+      ctxSpectrum.lineWidth = 1;
+
+      ctxSpectrum.beginPath();
+      ctxSpectrum.roundRect(panelX, panelY, panelW, panelH, 5);
+      ctxSpectrum.fill();
+      ctxSpectrum.stroke();
+
+      // パネルテキスト描画
+      ctxSpectrum.fillStyle = '#f8fafc';
+      ctxSpectrum.textAlign = 'center';
+      ctxSpectrum.textBaseline = 'middle';
+      ctxSpectrum.fillText(textStr, panelX + panelW / 2, panelY + panelH / 2 + 0.5);
+    }
   }
 }
 
