@@ -743,8 +743,13 @@ function drawSpectrogram() {
   ctxSpectrogram.fillText('C2 (65Hz)', w - 10, h - 8);
 }
 
+// Peak Hold 変数 (グローバル・モジュールスコープ)
+let peakHoldPoint = null;
+let lastPeakHoldTime = 0;
+const PEAK_HOLD_DURATION_MS = 1200; // 1.2秒間その場に確実に留まる
+
 // --------------------------------------------------------------------------
-// 10. Log Hz Spectrum (★ 送信画像2枚目完全一致 Peak発光球 ＆ ツールチップ)
+// 10. Log Hz Spectrum ( Peak Hold 発光球 ＋ ツールチップ)
 // --------------------------------------------------------------------------
 function drawSpectrum() {
   if (!ctxSpectrum || !canvasSpectrum) return;
@@ -855,18 +860,13 @@ function drawSpectrum() {
     ctxSpectrum.lineWidth = 1.8;
     ctxSpectrum.stroke();
 
-// ピークホールド変数 (その場にしばらく留まるアニメーション)
-let peakHoldPoint = null;
-let lastPeakHoldTime = 0;
-const PEAK_HOLD_DURATION_MS = 900; // 0.9秒間その場に留まる
-
-    // ★ Peak発光球 ＋ ツールチップパネル (ホールド留まり仕様) ★
+    // ★ Peak発光球 ＋ ツールチップパネル (Peak Hold 1.2秒間その場に留まる) ★
     const nowTime = performance.now();
 
     if (peakIdx >= 0 && maxVal > 15) {
       const currentPeak = points[peakIdx];
       
-      // 新しいピークの更新判定（前回のピークより大きいか、一定時間経過時）
+      // 前回のピークより強い音圧が発生したか、ホールド時間が経過したら新しいピークに切り替え
       if (!peakHoldPoint || maxVal >= peakHoldPoint.val * 0.95 || (nowTime - lastPeakHoldTime > PEAK_HOLD_DURATION_MS)) {
         peakHoldPoint = {
           x: currentPeak.x,

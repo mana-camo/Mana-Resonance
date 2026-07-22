@@ -21,7 +21,7 @@ namespace ManaResonanceInstall
         private Panel bannerBorder;
         private Panel bottomBorder;
 
-        // ウェルカム画面 (言語選択追加)
+        // ウェルカム画面
         private Panel welcomePanel;
         private Panel leftWelcomePanel;
         private Panel rightWelcomePanel;
@@ -67,6 +67,25 @@ namespace ManaResonanceInstall
         private bool isUpdateMode = false;
         private string updateDownloadUrl = "";
 
+        // 規約テキスト (英語 / 日本語)
+        private const string LICENSE_EN = 
+            "END USER LICENSE AGREEMENT FOR MANA RESONANCE\r\n\r\n" +
+            "1. TERMS OF USE\r\n" +
+            "Mana Resonance is an audio analytics software. You are granted a non-exclusive license to use this application for personal or commercial purposes.\r\n\r\n" +
+            "2. NO WARRANTY\r\n" +
+            "THE SOFTWARE IS PROVIDED 'AS IS' WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED.\r\n\r\n" +
+            "3. INTELLECTUAL PROPERTY\r\n" +
+            "All title, copyright, and intellectual property rights in and to the Software are owned by Mana Resonance Team.";
+
+        private const string LICENSE_JA = 
+            "Mana Resonance エンドユーザー使用許諾契約書\r\n\r\n" +
+            "1. 使用許諾\r\n" +
+            "本ソフトウェア「Mana Resonance」は音響解析アプリケーションです。ユーザーは個人用または商用利用の目的で本アプリケーションを使用する非独占的権利を許諾されます。\r\n\r\n" +
+            "2. 無保証\r\n" +
+            "本ソフトウェアは「現状のまま」提供され、明示的か暗黙的かを問わず、いかなる種類の保証も行われません。\r\n\r\n" +
+            "3. 著作権\r\n" +
+            "本ソフトウェアに関するすべての所有権および著作権は Mana Resonance 開発チームに帰属します。";
+
         public InstallerForm(bool isUpdate = false, string downloadUrl = "")
         {
             this.isUpdateMode = isUpdate;
@@ -75,7 +94,7 @@ namespace ManaResonanceInstall
             defaultInstallPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "Mana Resonance");
             InitializeComponent();
             
-            ApplyLanguage("EN"); // デフォルト英語
+            ApplyLanguage("EN"); // デフォルト英語・白テーマ
 
             if (isUpdateMode)
             {
@@ -138,16 +157,16 @@ namespace ManaResonanceInstall
 
             this.SuspendLayout();
 
-            // ウィンドウ基本属性
+            // ★ 標準クラシックホワイトテーマ ★
             this.Text = "Mana Resonance Setup";
             this.ClientSize = new Size(620, 420);
             this.FormBorderStyle = FormBorderStyle.FixedDialog;
             this.MaximizeBox = false;
             this.MinimizeBox = true;
             this.StartPosition = FormStartPosition.CenterScreen;
-            this.BackColor = Color.FromArgb(12, 14, 22);
+            this.BackColor = SystemColors.Control;
+            this.ForeColor = SystemColors.ControlText;
 
-            // Icon
             try
             {
                 Icon appIcon = Icon.ExtractAssociatedIcon(Assembly.GetExecutingAssembly().Location);
@@ -155,20 +174,20 @@ namespace ManaResonanceInstall
             }
             catch { }
 
-            // 上部バナー
+            // 上部ホワイトバナー
             bannerPanel.Size = new Size(620, 65);
             bannerPanel.Location = new Point(0, 0);
-            bannerPanel.BackColor = Color.FromArgb(18, 22, 34);
+            bannerPanel.BackColor = Color.White;
 
             lblBannerTitle.Location = new Point(15, 12);
             lblBannerTitle.Size = new Size(500, 22);
             lblBannerTitle.Font = new Font("Segoe UI", 11f, FontStyle.Bold);
-            lblBannerTitle.ForeColor = Color.White;
+            lblBannerTitle.ForeColor = Color.Black;
 
             lblBannerSub.Location = new Point(20, 36);
             lblBannerSub.Size = new Size(500, 20);
             lblBannerSub.Font = new Font("Segoe UI", 9f);
-            lblBannerSub.ForeColor = Color.FromArgb(160, 170, 190);
+            lblBannerSub.ForeColor = Color.DimGray;
 
             bannerIcon.Size = new Size(42, 42);
             bannerIcon.Location = new Point(560, 10);
@@ -182,7 +201,7 @@ namespace ManaResonanceInstall
 
             bannerBorder.Size = new Size(620, 1);
             bannerBorder.Location = new Point(0, 65);
-            bannerBorder.BackColor = Color.FromArgb(40, 45, 65);
+            bannerBorder.BackColor = Color.LightGray;
 
             bannerPanel.Controls.Add(lblBannerTitle);
             bannerPanel.Controls.Add(lblBannerSub);
@@ -193,32 +212,34 @@ namespace ManaResonanceInstall
             // 1. ウェルカム画面
             welcomePanel.Size = new Size(620, 305);
             welcomePanel.Location = new Point(0, 66);
+            welcomePanel.BackColor = SystemColors.Control;
 
-            leftWelcomePanel.Size = new Size(180, 305);
+            leftWelcomePanel.Size = new Size(170, 305);
             leftWelcomePanel.Location = new Point(0, 0);
-            leftWelcomePanel.BackColor = Color.FromArgb(24, 28, 42);
+            leftWelcomePanel.BackColor = Color.FromArgb(240, 243, 248);
 
-            rightWelcomePanel.Size = new Size(440, 305);
-            rightWelcomePanel.Location = new Point(180, 0);
+            rightWelcomePanel.Size = new Size(450, 305);
+            rightWelcomePanel.Location = new Point(170, 0);
+            rightWelcomePanel.BackColor = SystemColors.Control;
 
             lblWelcomeTitle.Location = new Point(20, 25);
-            lblWelcomeTitle.Size = new Size(400, 50);
-            lblWelcomeTitle.Font = new Font("Segoe UI", 14f, FontStyle.Bold);
-            lblWelcomeTitle.ForeColor = Color.FromArgb(192, 132, 252);
+            lblWelcomeTitle.Size = new Size(410, 50);
+            lblWelcomeTitle.Font = new Font("Segoe UI", 13.5f, FontStyle.Bold);
+            lblWelcomeTitle.ForeColor = Color.FromArgb(40, 60, 120);
 
             lblWelcomeDesc.Location = new Point(20, 85);
-            lblWelcomeDesc.Size = new Size(400, 110);
+            lblWelcomeDesc.Size = new Size(410, 110);
             lblWelcomeDesc.Font = new Font("Segoe UI", 9.5f);
-            lblWelcomeDesc.ForeColor = Color.FromArgb(200, 210, 225);
+            lblWelcomeDesc.ForeColor = Color.Black;
 
-            // 言語選択ドロップダウン
+            // 言語選択
             lblLangSelect.Location = new Point(20, 215);
             lblLangSelect.Size = new Size(140, 22);
             lblLangSelect.Font = new Font("Segoe UI", 9.5f, FontStyle.Bold);
-            lblLangSelect.ForeColor = Color.White;
+            lblLangSelect.ForeColor = Color.Black;
 
             cmbLanguage.Location = new Point(160, 212);
-            cmbLanguage.Size = new Size(160, 26);
+            cmbLanguage.Size = new Size(170, 26);
             cmbLanguage.DropDownStyle = ComboBoxStyle.DropDownList;
             cmbLanguage.Items.Add("English (Default)");
             cmbLanguage.Items.Add("日本語 (Japanese)");
@@ -236,30 +257,30 @@ namespace ManaResonanceInstall
             welcomePanel.Controls.Add(rightWelcomePanel);
             this.Controls.Add(welcomePanel);
 
-            // 2. ライセンス規約画面
+            // 2. ライセンス規約画面 (白背景・動的規約切替)
             licensePanel.Size = new Size(620, 305);
             licensePanel.Location = new Point(0, 66);
+            licensePanel.BackColor = SystemColors.Control;
             licensePanel.Visible = false;
 
             lblLicenseDesc.Location = new Point(20, 15);
             lblLicenseDesc.Size = new Size(580, 22);
             lblLicenseDesc.Font = new Font("Segoe UI", 9f);
-            lblLicenseDesc.ForeColor = Color.FromArgb(200, 210, 225);
+            lblLicenseDesc.ForeColor = Color.Black;
 
             txtLicense.Location = new Point(20, 42);
             txtLicense.Size = new Size(580, 215);
             txtLicense.Multiline = true;
             txtLicense.ReadOnly = true;
             txtLicense.ScrollBars = ScrollBars.Vertical;
-            txtLicense.BackColor = Color.FromArgb(18, 22, 34);
-            txtLicense.ForeColor = Color.FromArgb(220, 230, 245);
-            txtLicense.Font = new Font("Consolas", 8.5f);
-            txtLicense.Text = "END USER LICENSE AGREEMENT FOR MANA RESONANCE\r\n\r\n1. TERMS OF USE\r\nMana Resonance is an audio analytics software. You are granted a non-exclusive license to use this application for personal or commercial purposes.\r\n\r\n2. NO WARRANTY\r\nTHE SOFTWARE IS PROVIDED 'AS IS' WITHOUT WARRANTY OF ANY KIND.\r\n\r\n3. COPYRIGHT\r\nAll rights reserved by Mana Resonance Team.";
+            txtLicense.BackColor = Color.White;
+            txtLicense.ForeColor = Color.Black;
+            txtLicense.Font = new Font("Consolas", 9f);
 
             chkAccept.Location = new Point(20, 267);
             chkAccept.Size = new Size(580, 25);
             chkAccept.Font = new Font("Segoe UI", 9.5f, FontStyle.Bold);
-            chkAccept.ForeColor = Color.White;
+            chkAccept.ForeColor = Color.Black;
             chkAccept.CheckedChanged += (s, e) => { btnNext.Enabled = chkAccept.Checked; };
 
             licensePanel.Controls.Add(lblLicenseDesc);
@@ -270,12 +291,13 @@ namespace ManaResonanceInstall
             // 3. インストール先選択画面
             folderPanel.Size = new Size(620, 305);
             folderPanel.Location = new Point(0, 66);
+            folderPanel.BackColor = SystemColors.Control;
             folderPanel.Visible = false;
 
             lblFolderDesc.Location = new Point(20, 25);
             lblFolderDesc.Size = new Size(580, 40);
             lblFolderDesc.Font = new Font("Segoe UI", 9.5f);
-            lblFolderDesc.ForeColor = Color.FromArgb(200, 210, 225);
+            lblFolderDesc.ForeColor = Color.Black;
 
             txtFolder.Location = new Point(20, 80);
             txtFolder.Size = new Size(470, 26);
@@ -295,12 +317,13 @@ namespace ManaResonanceInstall
             // 4. プログレス画面
             progressPanel.Size = new Size(620, 305);
             progressPanel.Location = new Point(0, 66);
+            progressPanel.BackColor = SystemColors.Control;
             progressPanel.Visible = false;
 
             lblProgressDesc.Location = new Point(20, 50);
             lblProgressDesc.Size = new Size(580, 30);
             lblProgressDesc.Font = new Font("Segoe UI", 9.5f);
-            lblProgressDesc.ForeColor = Color.FromArgb(200, 210, 225);
+            lblProgressDesc.ForeColor = Color.Black;
 
             progressBar.Location = new Point(20, 95);
             progressBar.Size = new Size(580, 26);
@@ -313,35 +336,37 @@ namespace ManaResonanceInstall
             // 5. 完了画面
             finishPanel.Size = new Size(620, 305);
             finishPanel.Location = new Point(0, 66);
+            finishPanel.BackColor = SystemColors.Control;
             finishPanel.Visible = false;
 
-            leftFinishPanel.Size = new Size(180, 305);
+            leftFinishPanel.Size = new Size(170, 305);
             leftFinishPanel.Location = new Point(0, 0);
-            leftFinishPanel.BackColor = Color.FromArgb(24, 28, 42);
+            leftFinishPanel.BackColor = Color.FromArgb(240, 243, 248);
 
-            rightFinishPanel.Size = new Size(440, 305);
-            rightFinishPanel.Location = new Point(180, 0);
+            rightFinishPanel.Size = new Size(450, 305);
+            rightFinishPanel.Location = new Point(170, 0);
+            rightFinishPanel.BackColor = SystemColors.Control;
 
             lblFinishTitle.Location = new Point(20, 25);
-            lblFinishTitle.Size = new Size(400, 40);
-            lblFinishTitle.Font = new Font("Segoe UI", 14f, FontStyle.Bold);
-            lblFinishTitle.ForeColor = Color.FromArgb(192, 132, 252);
+            lblFinishTitle.Size = new Size(410, 40);
+            lblFinishTitle.Font = new Font("Segoe UI", 13.5f, FontStyle.Bold);
+            lblFinishTitle.ForeColor = Color.FromArgb(40, 60, 120);
 
             lblFinishDesc.Location = new Point(20, 75);
-            lblFinishDesc.Size = new Size(400, 70);
+            lblFinishDesc.Size = new Size(410, 70);
             lblFinishDesc.Font = new Font("Segoe UI", 9.5f);
-            lblFinishDesc.ForeColor = Color.FromArgb(200, 210, 225);
+            lblFinishDesc.ForeColor = Color.Black;
 
             chkRunApp.Location = new Point(20, 160);
-            chkRunApp.Size = new Size(400, 25);
+            chkRunApp.Size = new Size(410, 25);
             chkRunApp.Font = new Font("Segoe UI", 9.5f, FontStyle.Bold);
-            chkRunApp.ForeColor = Color.White;
+            chkRunApp.ForeColor = Color.Black;
             chkRunApp.Checked = true;
 
             chkShortcut.Location = new Point(20, 195);
-            chkShortcut.Size = new Size(400, 25);
+            chkShortcut.Size = new Size(410, 25);
             chkShortcut.Font = new Font("Segoe UI", 9.5f);
-            chkShortcut.ForeColor = Color.FromArgb(200, 210, 225);
+            chkShortcut.ForeColor = Color.Black;
             chkShortcut.Checked = true;
 
             rightFinishPanel.Controls.Add(lblFinishTitle);
@@ -352,10 +377,10 @@ namespace ManaResonanceInstall
             finishPanel.Controls.Add(rightFinishPanel);
             this.Controls.Add(finishPanel);
 
-            // 下部バー＆ナビゲーションボタン
+            // 下部バー＆ボタン
             bottomBorder.Size = new Size(620, 1);
             bottomBorder.Location = new Point(0, 371);
-            bottomBorder.BackColor = Color.FromArgb(40, 45, 65);
+            bottomBorder.BackColor = Color.LightGray;
             this.Controls.Add(bottomBorder);
 
             btnBack.Location = new Point(330, 382);
@@ -390,6 +415,7 @@ namespace ManaResonanceInstall
                 lblLangSelect.Text = "表示言語 (Language):";
 
                 lblLicenseDesc.Text = "使用許諾契約書をお読みいただき、同意される場合はチェックを入れてください。";
+                txtLicense.Text = LICENSE_JA; // 動的規約切替
                 chkAccept.Text = "使用許諾契約書の利用規約に同意します";
 
                 lblFolderDesc.Text = "Mana Resonance のインストール先フォルダを指定してください。";
@@ -415,6 +441,7 @@ namespace ManaResonanceInstall
                 lblLangSelect.Text = "Select Language:";
 
                 lblLicenseDesc.Text = "Please read the License Agreement and check the box below if you agree.";
+                txtLicense.Text = LICENSE_EN; // 動的規約切替
                 chkAccept.Text = "I accept the terms in the License Agreement";
 
                 lblFolderDesc.Text = "Select the destination folder where Mana Resonance will be installed.";
@@ -525,11 +552,9 @@ namespace ManaResonanceInstall
             {
                 if (!Directory.Exists(targetDir)) Directory.CreateDirectory(targetDir);
 
-                // 言語設定ファイルの保存 (アンインストーラー引継用)
                 string langFilePath = Path.Combine(targetDir, "language.txt");
                 File.WriteAllText(langFilePath, currentLanguage);
 
-                // 埋め込みリソースから app.zip を展開
                 Assembly assembly = Assembly.GetExecutingAssembly();
                 using (Stream zipStream = assembly.GetManifestResourceStream("app.zip"))
                 {
@@ -551,7 +576,6 @@ namespace ManaResonanceInstall
                     }
                 }
 
-                // uninstaller.exe の展開
                 using (Stream uninstStream = assembly.GetManifestResourceStream("uninstaller.exe"))
                 {
                     if (uninstStream != null)
@@ -564,13 +588,11 @@ namespace ManaResonanceInstall
                     }
                 }
 
-                // デスクトップショートカット作成
                 if (chkShortcut.Checked)
                 {
                     CreateDesktopShortcut(targetDir);
                 }
 
-                // レジストリ登録
                 RegisterControlPanelUninstall(targetDir);
 
                 progressBar.Value = 100;
@@ -654,9 +676,29 @@ namespace ManaResonanceInstall
             }
         }
 
+        // ★ 自動UAC管理者権限昇格Main ★
         [STAThread]
         public static void Main(string[] args)
         {
+            bool isAdmin = new WindowsPrincipal(WindowsIdentity.GetCurrent()).IsInRole(WindowsBuiltInRole.Administrator);
+            if (!isAdmin)
+            {
+                ProcessStartInfo psi = new ProcessStartInfo();
+                psi.FileName = Application.ExecutablePath;
+                psi.Verb = "runas"; // UAC管理者権限へ自動昇格
+                try
+                {
+                    Process.Start(psi);
+                    Application.Exit();
+                    return;
+                }
+                catch
+                {
+                    Application.Exit();
+                    return;
+                }
+            }
+
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
             bool isUpdate = args.Length > 0 && args[0] == "--update";
