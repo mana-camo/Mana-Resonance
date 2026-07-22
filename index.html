@@ -3,15 +3,15 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Mana Resonance - Pure Obsidian Analytics</title>
+  <title>Mana Resonance - Aether Liquid Glass Suite</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="index.css">
 </head>
 <body class="overflow-hidden select-none p-3 h-screen box-border">
 
-  <!-- メイン BetFlux アプリケーションフレーム (純黒 Obsidian) -->
-  <div class="betflux-container flex flex-col h-full w-full rounded-3xl overflow-hidden relative">
+  <!-- メイン Aether Liquid Glass アプリケーションフレーム -->
+  <div class="app-window-frame flex flex-col h-full w-full rounded-3xl overflow-hidden relative">
 
     <!-- 1. macOS風 カスタムタイトルバー -->
     <header class="title-bar flex items-center justify-between px-5 h-10 shrink-0 z-50">
@@ -21,7 +21,7 @@
         <button id="btn-maximize" class="ctrl-btn bg-[#27c93f]" title="最大化"></button>
       </div>
       <div class="text-[10px] font-mono tracking-widest text-slate-400 font-bold uppercase">
-        MANA RESONANCE — OBSIDIAN AUDIO ANALYTICS
+        MANA RESONANCE — AETHER LIQUID GLASS ANALYTICS
       </div>
       <div class="w-16"></div>
     </header>
@@ -30,13 +30,13 @@
     <div class="flex-1 flex overflow-hidden min-h-0">
 
       <!-- A. 左スリムサイドバー -->
-      <aside class="w-56 bg-black/60 border-r border-white/5 flex flex-col justify-between p-4 shrink-0 z-40">
+      <aside class="w-56 bg-black/70 border-r border-white/5 flex flex-col justify-between p-4 shrink-0 z-40">
         
         <!-- 上部: ブランドロゴ ＆ メニュー -->
         <div class="space-y-6">
           <!-- ブランドロゴ -->
           <div class="flex items-center space-x-3 px-2 pt-1">
-            <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-purple-600 via-violet-600 to-pink-600 flex items-center justify-center shadow-lg shadow-purple-950/60 border border-white/20">
+            <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-purple-600 via-violet-600 to-pink-600 flex items-center justify-center shadow-lg shadow-purple-950/80 border border-white/30">
               <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
             </div>
             <div>
@@ -61,7 +61,7 @@
             <div>
               <span class="text-[9px] font-extrabold text-slate-500 uppercase tracking-widest px-2.5 block mb-2">PRESETS</span>
               <div class="space-y-1" id="filter-presets">
-                <button data-preset="vocal" class="preset-btn active w-full text-left px-3 py-1.5 rounded-xl text-[11px] font-bold text-purple-300 bg-purple-600/20 border border-purple-500/40 transition-all">Vocal Boost</button>
+                <button data-preset="vocal" class="preset-btn active w-full text-left px-3 py-1.5 rounded-xl text-[11px] font-bold text-purple-200 bg-purple-600/30 border border-purple-500/50 transition-all">Vocal Boost</button>
                 <button data-preset="flat" class="preset-btn w-full text-left px-3 py-1.5 rounded-xl text-[11px] font-bold text-slate-400 hover:text-slate-200 hover:bg-white/5 transition-all">Flat (Original)</button>
                 <button data-preset="bass" class="preset-btn w-full text-left px-3 py-1.5 rounded-xl text-[11px] font-bold text-slate-400 hover:text-slate-200 hover:bg-white/5 transition-all">Bass Boost</button>
                 <button data-preset="clear" class="preset-btn w-full text-left px-3 py-1.5 rounded-xl text-[11px] font-bold text-slate-400 hover:text-slate-200 hover:bg-white/5 transition-all">Noise Cut</button>
@@ -72,12 +72,12 @@
 
         <!-- 下部: 再接続 ＆ BETA設定カード -->
         <div class="space-y-2.5 pt-3 border-t border-white/5">
-          <label class="flex items-center justify-between cursor-pointer select-none text-[10px] font-bold text-slate-400 bg-black/60 p-2.5 rounded-xl border border-white/5 hover:border-purple-500/30 transition-all">
+          <label class="flex items-center justify-between cursor-pointer select-none text-[10px] font-bold text-slate-400 bg-black/80 p-2.5 rounded-xl border border-white/5 hover:border-purple-500/30 transition-all">
             <span>BETA UPDATES</span>
             <input type="checkbox" id="beta-update-toggle" class="rounded border-purple-800 text-purple-600 focus:ring-0 bg-black w-3.5 h-3.5 cursor-pointer">
           </label>
 
-          <button id="btn-reconnect" class="w-full flex items-center justify-center space-x-2 bg-purple-600/25 hover:bg-purple-600/40 border border-purple-500/40 text-purple-200 rounded-xl py-2.5 text-xs font-black transition-all active:scale-95">
+          <button id="btn-reconnect" class="w-full flex items-center justify-center space-x-2 bg-purple-600/30 hover:bg-purple-600/45 border border-purple-500/50 text-purple-200 rounded-xl py-2.5 text-xs font-black transition-all active:scale-95">
             <span>🔄</span>
             <span>RECONNECT</span>
           </button>
@@ -85,19 +85,19 @@
       </aside>
 
       <!-- B. 右メインアナリティクスエリア -->
-      <main class="flex-1 flex flex-col p-6 space-y-5 overflow-y-auto min-w-0">
+      <main class="flex-1 flex flex-col p-5 space-y-4 overflow-y-auto min-w-0">
 
         <!-- 1. メインヘッダー ＆ ドロップゾーン -->
         <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 shrink-0">
           <div>
-            <h2 class="text-3xl font-black tracking-tight text-white">
+            <h2 class="text-2xl font-black tracking-tight text-white">
               Vocal <span class="font-light text-purple-300">Analytics</span>
             </h2>
           </div>
 
           <!-- ドロップゾーン & プレイヤー -->
           <div class="flex items-center space-x-3">
-            <div id="drop-zone" class="flex items-center border border-white/10 bg-black/60 rounded-2xl px-4 py-2 hover:border-purple-400 hover:bg-purple-500/10 transition-all text-xs text-slate-300 font-semibold cursor-pointer">
+            <div id="drop-zone" class="flex items-center border border-white/15 bg-black/80 rounded-2xl px-4 py-2 hover:border-purple-400 hover:bg-purple-500/10 transition-all text-xs text-slate-300 font-semibold cursor-pointer">
               <svg class="w-4 h-4 mr-2 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
               Drop Audio / Video File
             </div>
@@ -116,145 +116,139 @@
           </div>
         </div>
 
-        <!-- 2. トップ KPI ステータスカード群 (BetFlux スタイル 6グリッド) -->
-        <section class="grid grid-cols-2 md:grid-cols-6 gap-3 shrink-0">
+        <!-- 2. トップ KPI ステータスカード群 (8カラム 1段完全整列 Aether Liquid Glass) -->
+        <section class="grid grid-cols-2 md:grid-cols-8 gap-2.5 shrink-0">
           
-          <!-- Stat 1: Pitch F0 -->
-          <div class="betflux-card grid-mesh-bg p-3.5 flex flex-col justify-between border-purple-500/20">
-            <span class="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Pitch (F0)</span>
-            <div class="my-1">
-              <span id="pitch-freq" class="text-2xl font-black font-mono text-white tracking-tight">-- Hz</span>
+          <!-- 1: Pitch F0 -->
+          <div class="aether-liquid-glass grid-mesh-bg p-3 flex flex-col justify-between">
+            <span class="text-[9px] font-black text-slate-400 uppercase tracking-wider">Pitch (F0)</span>
+            <div class="my-0.5">
+              <span id="pitch-freq" class="text-lg font-black font-mono text-white tracking-tight truncate block">-- Hz</span>
             </div>
-            <span id="pitch-note" class="text-[10px] font-mono font-bold text-purple-300">--</span>
+            <span id="pitch-note" class="text-[9px] font-mono font-bold text-purple-300 truncate block">--</span>
           </div>
 
-          <!-- Stat 2: Pitch Tuner -->
-          <div class="betflux-card grid-mesh-bg p-3.5 flex flex-col justify-between">
-            <span class="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Pitch Tuner</span>
-            <div class="my-1">
-              <span id="pitch-cents-display" class="text-xl font-black font-mono text-emerald-400 tracking-tight">--</span>
+          <!-- 2: Pitch Tuner -->
+          <div class="aether-liquid-glass grid-mesh-bg p-3 flex flex-col justify-between">
+            <span class="text-[9px] font-black text-slate-400 uppercase tracking-wider">Pitch Tuner</span>
+            <div class="my-0.5">
+              <span id="pitch-cents-display" class="text-base font-black font-mono text-emerald-400 tracking-tight truncate block">--</span>
             </div>
-            <span class="text-[9px] font-mono text-slate-500">Accuracy</span>
+            <span class="text-[8px] font-mono text-slate-500 truncate block">Accuracy</span>
           </div>
 
-          <!-- Stat 3: BPM Meter -->
-          <div class="betflux-card grid-mesh-bg p-3.5 flex flex-col justify-between">
-            <span class="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">BPM Tempo</span>
-            <div class="my-1">
-              <span id="bpm-display" class="text-xl font-black font-mono text-purple-300 tracking-tight">-- BPM</span>
+          <!-- 3: BPM Meter -->
+          <div class="aether-liquid-glass grid-mesh-bg p-3 flex flex-col justify-between">
+            <span class="text-[9px] font-black text-slate-400 uppercase tracking-wider">BPM Tempo</span>
+            <div class="my-0.5">
+              <span id="bpm-display" class="text-base font-black font-mono text-purple-300 tracking-tight truncate block">-- BPM</span>
             </div>
-            <span class="text-[9px] font-mono text-slate-500">Realtime Beat</span>
+            <span class="text-[8px] font-mono text-slate-500 truncate block">Realtime Beat</span>
           </div>
 
-          <!-- Stat 4: Timbre -->
-          <div class="betflux-card grid-mesh-bg p-3.5 flex flex-col justify-between">
-            <span class="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Timbre</span>
-            <div class="my-1">
-              <span id="timbre-display" class="text-sm font-black font-mono text-purple-200 truncate block">--</span>
+          <!-- 4: Timbre -->
+          <div class="aether-liquid-glass grid-mesh-bg p-3 flex flex-col justify-between">
+            <span class="text-[9px] font-black text-slate-400 uppercase tracking-wider">Timbre</span>
+            <div class="my-0.5">
+              <span id="timbre-display" class="text-xs font-black font-mono text-purple-200 truncate block">--</span>
             </div>
-            <span class="text-[9px] font-mono text-slate-500">Formant F1/F2</span>
+            <span class="text-[8px] font-mono text-slate-500 truncate block">Formant F1/F2</span>
           </div>
 
-          <!-- Stat 5: Chord & Key -->
-          <div class="betflux-card grid-mesh-bg p-3.5 flex flex-col justify-between">
-            <span class="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Chord & Key</span>
-            <div class="my-1">
-              <span id="chord-display" class="text-xl font-black font-mono text-purple-300 truncate block">--</span>
+          <!-- 5: Voice Register -->
+          <div class="aether-liquid-glass grid-mesh-bg p-3 flex flex-col justify-between">
+            <span class="text-[9px] font-black text-slate-400 uppercase tracking-wider">Register</span>
+            <div class="flex space-x-0.5 my-1">
+              <span id="reg-chest" class="reg-indicator flex-1 text-center text-[7px] bg-black/80 border border-white/10 text-slate-600 py-0.5 rounded font-black">CHEST</span>
+              <span id="reg-mix" class="reg-indicator flex-1 text-center text-[7px] bg-black/80 border border-white/10 text-slate-600 py-0.5 rounded font-black">MIX</span>
+              <span id="reg-head" class="reg-indicator flex-1 text-center text-[7px] bg-black/80 border border-white/10 text-slate-600 py-0.5 rounded font-black">HEAD</span>
             </div>
-            <span id="key-display" class="text-[10px] font-mono font-semibold text-slate-400 truncate block">Key: --</span>
+            <span class="text-[8px] font-mono text-slate-500 truncate block">Voice Zone</span>
           </div>
 
-          <!-- Stat 6: Vocal Range -->
-          <div class="betflux-card grid-mesh-bg p-3.5 flex flex-col justify-between">
+          <!-- 6: Vibrato -->
+          <div class="aether-liquid-glass grid-mesh-bg p-3 flex flex-col justify-between">
             <div class="flex items-center justify-between">
-              <span class="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Range</span>
-              <div class="flex space-x-1">
-                <button id="btn-range-mode" class="text-[8px] bg-emerald-500/20 text-emerald-300 px-1 py-0.5 rounded font-bold font-mono">CONF</button>
-                <button id="btn-reset-range" class="text-[8px] bg-white/10 text-slate-300 px-1 py-0.5 rounded font-bold">RESET</button>
+              <span class="text-[9px] font-black text-slate-400 uppercase tracking-wider">Vibrato</span>
+              <canvas id="canvas-vibrato-radar" class="w-5 h-5 bg-black rounded border border-white/10 shrink-0" width="20" height="20"></canvas>
+            </div>
+            <div id="vibrato-status" class="text-[10px] font-black text-slate-400 flex items-center space-x-1 my-0.5">
+              <span class="w-1.5 h-1.5 rounded-full bg-slate-600 inline-block" id="vibrato-dot"></span>
+              <span id="vibrato-text">OFF</span>
+            </div>
+            <span id="vibrato-details" class="text-[8px] font-mono text-purple-300 truncate block">-- Hz/-- c</span>
+          </div>
+
+          <!-- 7: Chord & Key -->
+          <div class="aether-liquid-glass grid-mesh-bg p-3 flex flex-col justify-between">
+            <span class="text-[9px] font-black text-slate-400 uppercase tracking-wider">Chord / Key</span>
+            <div class="my-0.5">
+              <span id="chord-display" class="text-base font-black font-mono text-purple-300 truncate block">--</span>
+            </div>
+            <span id="key-display" class="text-[9px] font-mono font-semibold text-slate-400 truncate block">Key: --</span>
+          </div>
+
+          <!-- 8: Vocal Range -->
+          <div class="aether-liquid-glass grid-mesh-bg p-3 flex flex-col justify-between">
+            <div class="flex items-center justify-between">
+              <span class="text-[9px] font-black text-slate-400 uppercase tracking-wider">Range</span>
+              <div class="flex space-x-0.5">
+                <button id="btn-range-mode" class="text-[7px] bg-emerald-500/20 text-emerald-300 px-1 py-0.5 rounded font-bold font-mono">CONF</button>
+                <button id="btn-reset-range" class="text-[7px] bg-white/10 text-slate-300 px-1 py-0.5 rounded font-bold">RESET</button>
               </div>
             </div>
-            <div class="my-1">
-              <span class="text-sm font-black font-mono text-emerald-400 truncate block">
+            <div class="my-0.5">
+              <span class="text-xs font-black font-mono text-emerald-400 truncate block">
                 <span id="range-min">--</span> ~ <span id="range-max">--</span>
               </span>
             </div>
-            <span id="range-span" class="text-[9px] font-mono text-slate-500 truncate block">--</span>
+            <span id="range-span" class="text-[8px] font-mono text-slate-500 truncate block">--</span>
           </div>
 
         </section>
 
-        <!-- 3. 中央メインアナライザー領域 (キャンバス独立配置) -->
-        <section class="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-4 min-h-[360px] relative">
+        <!-- 3. ご指示通りの「3段縦並び (- - -)」モニターエリア！ -->
+        <section class="flex-1 flex flex-col space-y-3 min-h-0">
           
-          <!-- メイン大モニター: 伴奏透視システム（スペクトログラム）＋ ピッチトラッカー (2カラム占有) -->
-          <div class="lg:col-span-2 flex flex-col space-y-3 relative min-h-[340px]">
-            
-            <!-- 上: スペクトログラム -->
-            <div class="flex-1 betflux-card p-3 flex flex-col relative overflow-hidden grid-mesh-bg min-h-[180px]">
-              <div class="flex items-center justify-between z-10 mb-2">
-                <span class="text-xs font-black uppercase tracking-wider text-purple-300 flex items-center">
-                  <span class="w-2 h-2 rounded-full bg-purple-500 mr-2 animate-pulse"></span>
-                  Companion Perspective (Spectrogram)
-                </span>
-                <span class="text-xs text-purple-400 font-mono font-bold" id="fps-counter">60 FPS</span>
-              </div>
-              <div class="flex-1 bg-black rounded-xl overflow-hidden border border-white/10 relative min-h-[140px]">
-                <canvas id="canvas-spectrogram" class="w-full h-full block"></canvas>
-              </div>
+          <!-- 1段目 (-): Companion Perspective (スペクトログラム) -->
+          <div class="flex-1 aether-liquid-glass p-3 flex flex-col min-h-[140px] grid-mesh-bg relative overflow-hidden">
+            <div class="flex items-center justify-between z-10 mb-1.5 shrink-0">
+              <span class="text-[11px] font-black uppercase tracking-wider text-purple-300 flex items-center">
+                <span class="w-2 h-2 rounded-full bg-purple-500 mr-2 animate-pulse"></span>
+                1. Companion Perspective (Spectrogram)
+              </span>
+              <span class="text-xs text-purple-400 font-mono font-bold" id="fps-counter">60 FPS</span>
             </div>
-
-            <!-- 下: ピッチトラッカー -->
-            <div class="h-40 betflux-card p-3 flex flex-col relative overflow-hidden grid-mesh-bg shrink-0">
-              <div class="flex items-center justify-between z-10 mb-1">
-                <span class="text-[10px] font-black uppercase tracking-wider text-purple-400">
-                  Vocal Pitch Tracker Trajectory
-                </span>
-              </div>
-              <div class="flex-1 bg-black rounded-xl overflow-hidden border border-white/10 relative min-h-[100px]">
-                <canvas id="canvas-pitch-tracker" class="w-full h-full block"></canvas>
-                <canvas id="canvas-particles" class="w-full h-full block absolute top-0 left-0 pointer-events-none"></canvas>
-              </div>
+            <div class="flex-1 bg-black rounded-xl overflow-hidden border border-white/10 relative min-h-[90px]" id="container-spectrogram">
+              <canvas id="canvas-spectrogram" class="w-full h-full block absolute top-0 left-0"></canvas>
             </div>
-
           </div>
 
-          <!-- 右側: 周波数スペクトラム ＋ 3-Band ＋ 浮遊立体ステータスカード -->
-          <div class="lg:col-span-1 flex flex-col space-y-3 min-h-[340px]">
-            
-            <!-- Log Hz Spectrum キャンバス -->
-            <div class="betflux-card p-3 flex flex-col space-y-2 flex-1 min-h-[160px] grid-mesh-bg">
-              <span class="text-[10px] font-black text-slate-400 uppercase tracking-wider">Log Hz Spectrum</span>
-              <div class="flex-1 bg-black rounded-xl overflow-hidden border border-white/10 relative min-h-[120px]">
-                <canvas id="canvas-spectrum" class="w-full h-full block"></canvas>
-              </div>
+          <!-- 2段目 (-): Vocal Pitch Tracker (ピッチトラッカー) -->
+          <div class="flex-1 aether-liquid-glass p-3 flex flex-col min-h-[140px] grid-mesh-bg relative overflow-hidden">
+            <div class="flex items-center justify-between z-10 mb-1.5 shrink-0">
+              <span class="text-[11px] font-black uppercase tracking-wider text-purple-400 flex items-center">
+                <span class="w-2 h-2 rounded-full bg-emerald-400 mr-2 animate-pulse"></span>
+                2. Vocal Pitch Tracker Trajectory
+              </span>
             </div>
-
-            <!-- 浮遊立体カード (Float Cards): Vibrato & Voice Register -->
-            <div class="float-card p-4 space-y-3 shrink-0">
-              <!-- 声区 Voice Register -->
-              <div>
-                <span class="text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-1.5">Voice Register</span>
-                <div class="flex space-x-1.5">
-                  <span id="reg-chest" class="reg-indicator flex-1 text-center text-[10px] bg-black/80 border border-white/10 text-slate-500 py-1 rounded-lg font-black">CHEST</span>
-                  <span id="reg-mix" class="reg-indicator flex-1 text-center text-[10px] bg-black/80 border border-white/10 text-slate-500 py-1 rounded-lg font-black">MIX</span>
-                  <span id="reg-head" class="reg-indicator flex-1 text-center text-[10px] bg-black/80 border border-white/10 text-slate-500 py-1 rounded-lg font-black">HEAD</span>
-                </div>
-              </div>
-
-              <!-- ビブラート Vibrato Radar -->
-              <div class="pt-2 border-t border-white/10 flex items-center justify-between">
-                <div>
-                  <span class="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Vibrato Radar</span>
-                  <div id="vibrato-status" class="text-xs font-black text-slate-400 flex items-center space-x-1.5 mt-0.5">
-                    <span class="w-2 h-2 rounded-full bg-slate-600 inline-block" id="vibrato-dot"></span>
-                    <span id="vibrato-text">OFF</span>
-                  </div>
-                  <span id="vibrato-details" class="text-[9px] font-mono text-purple-300 block mt-0.5">-- Hz / -- c</span>
-                </div>
-                <canvas id="canvas-vibrato-radar" class="w-12 h-12 bg-black rounded-xl border border-white/10 shrink-0" width="48" height="48"></canvas>
-              </div>
+            <div class="flex-1 bg-black rounded-xl overflow-hidden border border-white/10 relative min-h-[90px]" id="container-pitch-tracker">
+              <canvas id="canvas-pitch-tracker" class="w-full h-full block absolute top-0 left-0"></canvas>
+              <canvas id="canvas-particles" class="w-full h-full block absolute top-0 left-0 pointer-events-none"></canvas>
             </div>
+          </div>
 
+          <!-- 3段目 (-): Log Hz Spectrum (対数スペクトラム) -->
+          <div class="flex-1 aether-liquid-glass p-3 flex flex-col min-h-[140px] grid-mesh-bg relative overflow-hidden">
+            <div class="flex items-center justify-between z-10 mb-1.5 shrink-0">
+              <span class="text-[11px] font-black uppercase tracking-wider text-slate-300 flex items-center">
+                <span class="w-2 h-2 rounded-full bg-cyan-400 mr-2 animate-pulse"></span>
+                3. Log Hz Spectrum (30Hz - 20kHz)
+              </span>
+            </div>
+            <div class="flex-1 bg-black rounded-xl overflow-hidden border border-white/10 relative min-h-[90px]" id="container-spectrum">
+              <canvas id="canvas-spectrum" class="w-full h-full block absolute top-0 left-0"></canvas>
+            </div>
           </div>
 
         </section>
