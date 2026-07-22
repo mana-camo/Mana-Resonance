@@ -92,8 +92,15 @@ function setupResizeObservers() {
 // --------------------------------------------------------------------------
 // 2. 毎フレーム描画 ＆ 音声解析ループ (100%常時稼働)
 // --------------------------------------------------------------------------
+let lastRenderTimestamp = 0;
+let pitchAnalyzeAccumulator = 0; // 自己相関の間引き用タイマー
+const PITCH_ANALYZE_INTERVAL = 33; // 約30fpsレートで解析 (ms)
+
 function renderLoop(timestamp) {
   requestAnimationFrame(renderLoop);
+
+  const frameDelta = timestamp - (lastRenderTimestamp || timestamp);
+  lastRenderTimestamp = timestamp;
 
   // FPS計算
   frameCount++;
@@ -104,9 +111,13 @@ function renderLoop(timestamp) {
     lastFpsTimestamp = timestamp;
   }
 
-  // 音声解析（audioCtx 稼働時のみ）
+  // 音声解析 (重い自己相関は30fps相当に間引いて実行)
   if (audioCtx && audioCtx.state === 'running') {
-    analyzePitch();
+    pitchAnalyzeAccumulator += frameDelta;
+    if (pitchAnalyzeAccumulator >= PITCH_ANALYZE_INTERVAL) {
+      pitchAnalyzeAccumulator = 0;
+      analyzePitch();
+    }
     analyzePitchAccuracy(lastValidF0);
     analyzeBPM();
     analyzeFormants();
@@ -115,13 +126,10 @@ function renderLoop(timestamp) {
     lastValidF0 = 0;
   }
 
-  // ピッチ履歴のシフト (右から左へぬるぬる流れるアニメーション)
-  pitchHistory.shift();
-  pitchHistory.push(lastValidF0);
-
   // 描画処理 (audioCtx に関わらず 100% 常時描画)
+  // frameDelta を渡してFPS非依存スクロールを実現
   drawSpectrogram();
-  drawPitchTracker();
+  drawPitchTracker(frameDelta);
   drawSpectrum();
   drawVibratoRadar();
 }
@@ -401,13 +409,19 @@ function drawSpectrogram() {
 }
 
 // --------------------------------------------------------------------------
-// 7. 2段目 Vocal Pitch Tracker (右から左へぬるぬる流れる緑色発光リボン復元版)
+// 7. 2段目 Vocal Pitch Tracker
+// FPS非依存のデルタ時間ベーススクロール ＆ 固定スコープの定数
 // --------------------------------------------------------------------------
+const PITCH_MIN_MIDI = 36;
+const PITCH_MAX_MIDI = 96;
+const PITCH_SCROLL_SPEED = 80; // px/秒 (60FPS→約1.3px/frame、160FPS→0.5px/frame)
+
 let pitchBufferCanvas = null;
 let pitchBufferCtx = null;
 let lastPitchY = -1;
+let pitchScrollAccum = 0; // スクロール蓄積量
 
-function drawPitchTracker() {
+function drawPitchTracker(frameDelta) {
   if (!ctxPitchTracker || !canvasPitchTracker) return;
 
   const w = canvasPitchTracker.width;
@@ -423,37 +437,44 @@ function drawPitchTracker() {
     pitchBufferCtx.fillStyle = '#020306';
     pitchBufferCtx.fillRect(0, 0, w, h);
     lastPitchY = -1;
+    pitchScrollAccum = 0;
   }
 
-  // ★ バッファ全体を左に 2px 横スクロール！ (右から左へ流れる確定アニメーション) ★
-  pitchBufferCtx.drawImage(pitchBufferCanvas, -2, 0);
+  // ★ デルタ時間に基づいてスクロール量を計算 (FPS非依存) ★
+  pitchScrollAccum += (PITCH_SCROLL_SPEED * (frameDelta || 16.7)) / 1000;
+  const scrollPx = Math.floor(pitchScrollAccum);
+  pitchScrollAccum -= scrollPx; // 残り小数を次フレームへ持ち越し
 
-  // 右端 2px エリアの背景クリア
-  const x = w - 2;
-  pitchBufferCtx.fillStyle = '#020306';
-  pitchBufferCtx.fillRect(x, 0, 2, h);
+  if (scrollPx > 0) {
+    // バッファ全体を左にscrollPxスクロール
+    pitchBufferCtx.drawImage(pitchBufferCanvas, -scrollPx, 0);
 
-  // 右端への最新ピッチデータ線の追加描画
-  const minMidi = 36;
-  const maxMidi = 96;
+    // 右端エリアをクリア
+    pitchBufferCtx.fillStyle = '#020306';
+    pitchBufferCtx.fillRect(w - scrollPx, 0, scrollPx, h);
+  }
+
+  // 右端への最新ピッチデータの追加描画
+  const x = w - 1;
 
   if (lastValidF0 > 0) {
     const midi = 12 * Math.log2(lastValidF0 / 440) + 69;
-    if (midi >= minMidi && midi <= maxMidi) {
-      const normY = (midi - minMidi) / (maxMidi - minMidi);
+    if (midi >= PITCH_MIN_MIDI && midi <= PITCH_MAX_MIDI) {
+      const normY = (midi - PITCH_MIN_MIDI) / (PITCH_MAX_MIDI - PITCH_MIN_MIDI);
       const currentY = h - (normY * h);
 
-      pitchBufferCtx.shadowBlur = 12;
+      pitchBufferCtx.shadowBlur = 14;
       pitchBufferCtx.shadowColor = '#22c55e';
       pitchBufferCtx.strokeStyle = '#4ade80';
-      pitchBufferCtx.lineWidth = 4;
+      pitchBufferCtx.lineWidth = 4.5;
       pitchBufferCtx.lineCap = 'round';
 
       pitchBufferCtx.beginPath();
       if (lastPitchY > 0) {
-        pitchBufferCtx.moveTo(x - 2, lastPitchY);
+        pitchBufferCtx.moveTo(x - scrollPx - 1, lastPitchY);
         pitchBufferCtx.lineTo(x, currentY);
       } else {
+        // 新たにピッチ検出が始まった瞬間
         pitchBufferCtx.moveTo(x, currentY);
         pitchBufferCtx.lineTo(x + 1, currentY);
       }
@@ -488,7 +509,7 @@ function drawPitchTracker() {
   ctxPitchTracker.textAlign = 'right';
 
   guideLabels.forEach(item => {
-    const normY = (item.midi - minMidi) / (maxMidi - minMidi);
+    const normY = (item.midi - PITCH_MIN_MIDI) / (PITCH_MAX_MIDI - PITCH_MIN_MIDI);
     const y = h - (normY * h);
     ctxPitchTracker.beginPath();
     ctxPitchTracker.moveTo(0, y);
