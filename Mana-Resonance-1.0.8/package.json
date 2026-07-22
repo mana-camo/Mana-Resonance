@@ -1,0 +1,34 @@
+{
+  "name": "mana-resonance",
+  "version": "1.0.8",
+  "description": "Mana Resonance Desktop - Realtime Music & Multi-Band Analyzer",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "node build-portable.js",
+    "build-installer": "node build-installer.js",
+    "build-mac": "node build-mac.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "electron": "^31.3.0",
+    "electron-builder": "^24.13.3",
+    "electron-packager": "^17.1.2"
+  },
+  "build": {
+    "appId": "com.mana.resonance",
+    "productName": "Mana Resonance",
+    "win": {
+      "target": "portable"
+    },
+    "directories": {
+      "output": "dist"
+    }
+  },
+  "updater": {
+    "owner": "mana-camo",
+    "repo": "Mana-Resonance"
+  }
+}
