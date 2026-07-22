@@ -161,7 +161,7 @@ async function startAudioStream() {
       pitchAnalyser.fftSize = 2048;
 
       spectrumAnalyser = audioCtx.createAnalyser();
-      spectrumAnalyser.fftSize = 1024;
+      spectrumAnalyser.fftSize = 4096; // 4096ビンで低音域の解像度を極限まで高精細化
 
       lowAnalyser = audioCtx.createAnalyser();
       lowAnalyser.fftSize = 512;
@@ -401,8 +401,12 @@ function drawSpectrogram() {
 }
 
 // --------------------------------------------------------------------------
-// 7. 2段目 Vocal Pitch Tracker (右から左へぬるぬる流れる緑色発光リボン)
+// 7. 2段目 Vocal Pitch Tracker (右から左へぬるぬる流れる緑色発光リボン復元版)
 // --------------------------------------------------------------------------
+let pitchBufferCanvas = null;
+let pitchBufferCtx = null;
+let lastPitchY = -1;
+
 function drawPitchTracker() {
   if (!ctxPitchTracker || !canvasPitchTracker) return;
 
@@ -410,11 +414,65 @@ function drawPitchTracker() {
   const h = canvasPitchTracker.height;
   if (w <= 0 || h <= 0) return;
 
-  // キャンバス背景
-  ctxPitchTracker.fillStyle = '#020306';
-  ctxPitchTracker.fillRect(0, 0, w, h);
+  // オフスクリーンバッファ初期化
+  if (!pitchBufferCanvas || pitchBufferCanvas.width !== w || pitchBufferCanvas.height !== h) {
+    pitchBufferCanvas = document.createElement('canvas');
+    pitchBufferCanvas.width = w;
+    pitchBufferCanvas.height = h;
+    pitchBufferCtx = pitchBufferCanvas.getContext('2d');
+    pitchBufferCtx.fillStyle = '#020306';
+    pitchBufferCtx.fillRect(0, 0, w, h);
+    lastPitchY = -1;
+  }
 
-  // 背景音高ガイドライン (C2 ~ C6)
+  // ★ バッファ全体を左に 2px 横スクロール！ (右から左へ流れる確定アニメーション) ★
+  pitchBufferCtx.drawImage(pitchBufferCanvas, -2, 0);
+
+  // 右端 2px エリアの背景クリア
+  const x = w - 2;
+  pitchBufferCtx.fillStyle = '#020306';
+  pitchBufferCtx.fillRect(x, 0, 2, h);
+
+  // 右端への最新ピッチデータ線の追加描画
+  const minMidi = 36;
+  const maxMidi = 96;
+
+  if (lastValidF0 > 0) {
+    const midi = 12 * Math.log2(lastValidF0 / 440) + 69;
+    if (midi >= minMidi && midi <= maxMidi) {
+      const normY = (midi - minMidi) / (maxMidi - minMidi);
+      const currentY = h - (normY * h);
+
+      pitchBufferCtx.shadowBlur = 12;
+      pitchBufferCtx.shadowColor = '#22c55e';
+      pitchBufferCtx.strokeStyle = '#4ade80';
+      pitchBufferCtx.lineWidth = 4;
+      pitchBufferCtx.lineCap = 'round';
+
+      pitchBufferCtx.beginPath();
+      if (lastPitchY > 0) {
+        pitchBufferCtx.moveTo(x - 2, lastPitchY);
+        pitchBufferCtx.lineTo(x, currentY);
+      } else {
+        pitchBufferCtx.moveTo(x, currentY);
+        pitchBufferCtx.lineTo(x + 1, currentY);
+      }
+      pitchBufferCtx.stroke();
+      pitchBufferCtx.shadowBlur = 0;
+
+      lastPitchY = currentY;
+    } else {
+      lastPitchY = -1;
+    }
+  } else {
+    lastPitchY = -1;
+  }
+
+  // メインキャンバスへ転送
+  ctxPitchTracker.clearRect(0, 0, w, h);
+  ctxPitchTracker.drawImage(pitchBufferCanvas, 0, 0);
+
+  // 音高ガイドライン (C2 ~ C6) & Hzテキスト直描きオーバーレイ
   const guideLabels = [
     { midi: 36, label: 'C2 (65Hz)' },
     { midi: 48, label: 'C3 (131Hz)' },
@@ -423,10 +481,7 @@ function drawPitchTracker() {
     { midi: 84, label: 'C6 (1047Hz)' }
   ];
 
-  const minMidi = 36;
-  const maxMidi = 96;
-
-  ctxPitchTracker.strokeStyle = 'rgba(255, 255, 255, 0.06)';
+  ctxPitchTracker.strokeStyle = 'rgba(255, 255, 255, 0.07)';
   ctxPitchTracker.lineWidth = 1;
   ctxPitchTracker.fillStyle = 'rgba(255, 255, 255, 0.35)';
   ctxPitchTracker.font = '10px monospace';
@@ -442,60 +497,6 @@ function drawPitchTracker() {
 
     ctxPitchTracker.fillText(item.label, w - 10, y - 3);
   });
-
-  // ★ 右から左へぬるぬる流れる緑色発光リボン波形描画 ★
-  const stepX = w / (MAX_PITCH_HISTORY - 1);
-
-  ctxPitchTracker.shadowBlur = 12;
-  ctxPitchTracker.shadowColor = '#22c55e';
-  ctxPitchTracker.strokeStyle = '#4ade80';
-  ctxPitchTracker.lineWidth = 4.5;
-  ctxPitchTracker.lineCap = 'round';
-  ctxPitchTracker.lineJoin = 'round';
-
-  ctxPitchTracker.beginPath();
-  let drawing = false;
-  let lastHeadPoint = null;
-
-  for (let i = 0; i < pitchHistory.length; i++) {
-    const f0 = pitchHistory[i];
-    if (f0 <= 0) {
-      if (drawing) {
-        ctxPitchTracker.stroke();
-        ctxPitchTracker.beginPath();
-        drawing = false;
-      }
-      continue;
-    }
-
-    const midi = 12 * Math.log2(f0 / 440) + 69;
-    if (midi >= minMidi && midi <= maxMidi) {
-      const normY = (midi - minMidi) / (maxMidi - minMidi);
-      const dotY = h - (normY * h);
-      const dotX = i * stepX;
-
-      lastHeadPoint = { x: dotX, y: dotY };
-
-      if (!drawing) {
-        ctxPitchTracker.moveTo(dotX, dotY);
-        drawing = true;
-      } else {
-        ctxPitchTracker.lineTo(dotX, dotY);
-      }
-    }
-  }
-
-  if (drawing) ctxPitchTracker.stroke();
-
-  // 現在位置の右端先端発光オーラ
-  if (lastHeadPoint) {
-    ctxPitchTracker.fillStyle = '#86efac';
-    ctxPitchTracker.beginPath();
-    ctxPitchTracker.arc(lastHeadPoint.x, lastHeadPoint.y, 3.5, 0, Math.PI * 2);
-    ctxPitchTracker.fill();
-  }
-
-  ctxPitchTracker.shadowBlur = 0; // リセット
 }
 
 // --------------------------------------------------------------------------
@@ -539,18 +540,40 @@ function drawSpectrum() {
     const totalBins = data.length;
     const sampleRate = audioCtx.sampleRate;
 
-    // キーポイントの算出 (横幅wを120個のサンプルポイントにスムーズ平滑化)
-    const numPoints = 120;
-    const points = [];
+    // 低音域のステップ状段差を完全解消する高解像度サンプリング (200ポイント)
+    const numPoints = 200;
+    const rawPoints = [];
 
     for (let i = 0; i <= numPoints; i++) {
       const normX = i / numPoints;
       const x = normX * w;
       const freq = 30 * Math.pow(20000 / 30, normX);
-      const binIdx = Math.round((freq * totalBins * 2) / sampleRate);
-      const val = binIdx < data.length ? data[binIdx] : 0;
-      const y = h - (val / 255) * (h - 25) - 10;
-      points.push({ x, y });
+      const exactBin = (freq * totalBins * 2) / sampleRate;
+
+      // 小数ビンの線形補間 (30Hz〜1kHzの階段化を完全防止)
+      const b0 = Math.floor(exactBin);
+      const b1 = Math.min(totalBins - 1, b0 + 1);
+      const frac = exactBin - b0;
+
+      const v0 = b0 < data.length ? data[b0] : 0;
+      const v1 = b1 < data.length ? data[b1] : 0;
+      const interpolatedVal = v0 * (1 - frac) + v1 * frac;
+
+      const y = h - (interpolatedVal / 255) * (h - 25) - 10;
+      rawPoints.push({ x, y });
+    }
+
+    // 移動平均平滑化 (Smooth Moving Average Filter)
+    const points = [];
+    for (let i = 0; i < rawPoints.length; i++) {
+      let sumY = 0;
+      let count = 0;
+      for (let k = -2; k <= 2; k++) {
+        const idx = Math.max(0, Math.min(rawPoints.length - 1, i + k));
+        sumY += rawPoints[idx].y;
+        count++;
+      }
+      points.push({ x: rawPoints[i].x, y: sumY / count });
     }
 
     // Smooth Bezier Curve Path (ベジェ滑らか曲線パス) の生成
