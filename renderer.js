@@ -407,12 +407,13 @@ function drawSpectrogram() {
       const binIdx = Math.round((targetFreq * totalBins * 2) / sampleRate);
       const energy = binIdx < data.length ? data[binIdx] : 0;
 
-      if (energy > 10) {
-        const norm = energy / 255;
-        const r = Math.round(140 + norm * 115);
-        const g = Math.round(40 + norm * 180);
-        const b = Math.round(220 + norm * 35);
-        spectroBufferCtx.fillStyle = `rgba(${r}, ${g}, ${b}, ${0.2 + norm * 0.8})`;
+      if (energy > 12) {
+        // ガンマ補正で弱音と強音の濃淡コントラストを強化
+        const norm = Math.pow(energy / 255, 1.4);
+        const r = Math.round(160 + norm * 95);
+        const g = Math.round(30 + norm * 160);
+        const b = Math.round(230 + norm * 25);
+        spectroBufferCtx.fillStyle = `rgba(${r}, ${g}, ${b}, ${Math.min(1.0, 0.1 + norm * 0.9)})`;
         spectroBufferCtx.fillRect(x, y, 1.5, 1.2);
       }
     }
@@ -482,10 +483,29 @@ function drawPitchTracker() {
   }
   if (pitchHistory.length > MAX_PITCH_HISTORY) pitchHistory.shift();
 
+  // ネオングロー発光グラデーション線の描画 (送信画像スタイル)
   const stepX = w / MAX_PITCH_HISTORY;
+  ctxPitchTracker.shadowBlur = 10;
+  ctxPitchTracker.shadowColor = '#22c55e';
+  ctxPitchTracker.strokeStyle = '#4ade80';
+  ctxPitchTracker.lineWidth = 4;
+  ctxPitchTracker.lineCap = 'round';
+  ctxPitchTracker.lineJoin = 'round';
+
+  ctxPitchTracker.beginPath();
+  let drawing = false;
+  let lastHeadPoint = null;
+
   for (let i = 0; i < pitchHistory.length; i++) {
     const f0 = pitchHistory[i];
-    if (f0 <= 0) continue;
+    if (f0 <= 0) {
+      if (drawing) {
+        ctxPitchTracker.stroke();
+        ctxPitchTracker.beginPath();
+        drawing = false;
+      }
+      continue;
+    }
 
     const midi = 12 * Math.log2(f0 / 440) + 69;
     if (midi >= minMidi && midi <= maxMidi) {
@@ -493,12 +513,27 @@ function drawPitchTracker() {
       const dotY = h - (normY * h);
       const dotX = i * stepX;
 
-      ctxPitchTracker.fillStyle = '#34d399';
-      ctxPitchTracker.beginPath();
-      ctxPitchTracker.arc(dotX, dotY, 2, 0, Math.PI * 2);
-      ctxPitchTracker.fill();
+      lastHeadPoint = { x: dotX, y: dotY };
+
+      if (!drawing) {
+        ctxPitchTracker.moveTo(dotX, dotY);
+        drawing = true;
+      } else {
+        ctxPitchTracker.lineTo(dotX, dotY);
+      }
     }
   }
+  if (drawing) ctxPitchTracker.stroke();
+
+  // 最新ピッチ位置の先端発光オーラ
+  if (lastHeadPoint) {
+    ctxPitchTracker.fillStyle = '#86efac';
+    ctxPitchTracker.beginPath();
+    ctxPitchTracker.arc(lastHeadPoint.x, lastHeadPoint.y, 3, 0, Math.PI * 2);
+    ctxPitchTracker.fill();
+  }
+
+  ctxPitchTracker.shadowBlur = 0; // リセット
 }
 
 // --------------------------------------------------------------------------
@@ -559,21 +594,23 @@ function drawSpectrum() {
     ctxSpectrum.lineTo(w, h);
     ctxSpectrum.closePath();
 
-    // 縦グラデーション塗りの充填
+    // 縦マルチカラーグラデーション塗りの充填 (送信画像スタイル)
     const grad = ctxSpectrum.createLinearGradient(0, 0, 0, h);
-    grad.addColorStop(0, 'rgba(168, 85, 247, 0.6)');
-    grad.addColorStop(0.5, 'rgba(56, 189, 248, 0.3)');
+    grad.addColorStop(0, 'rgba(250, 204, 21, 0.85)'); // イエロー (頂点)
+    grad.addColorStop(0.35, 'rgba(251, 146, 60, 0.7)'); // オレンジ
+    grad.addColorStop(0.65, 'rgba(225, 29, 72, 0.55)'); // ローズ/マゼンタ
+    grad.addColorStop(0.88, 'rgba(126, 34, 206, 0.3)');  // パープル
     grad.addColorStop(1, 'rgba(2, 3, 6, 0.0)');
     ctxSpectrum.fillStyle = grad;
     ctxSpectrum.fill();
 
-    // 上部頂点のアウトラインネオン線
+    // 上部頂点のアウトライン線
     ctxSpectrum.beginPath();
     points.forEach((p, idx) => {
       if (idx === 0) ctxSpectrum.moveTo(p.x, p.y);
       else ctxSpectrum.lineTo(p.x, p.y);
     });
-    ctxSpectrum.strokeStyle = '#c084fc';
+    ctxSpectrum.strokeStyle = '#f43f5e';
     ctxSpectrum.lineWidth = 1.5;
     ctxSpectrum.stroke();
   }
