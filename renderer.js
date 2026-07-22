@@ -972,13 +972,27 @@ function setupUIEvents() {
     });
   }
 
-  if (filterPresets) {
-    const btns = filterPresets.querySelectorAll('.preset-btn');
-    btns.forEach(btn => {
-      btn.addEventListener('click', () => {
-        btns.forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-      });
+  // SETTINGS モーダル表示・非表示イベント
+  const btnOpenSettings = document.getElementById('btn-open-settings');
+  const btnCloseSettings = document.getElementById('btn-close-settings');
+  const btnSaveSettings = document.getElementById('btn-save-settings');
+  const settingsModal = document.getElementById('settings-modal');
+
+  if (btnOpenSettings && settingsModal) {
+    btnOpenSettings.addEventListener('click', () => {
+      settingsModal.classList.remove('hidden');
+    });
+  }
+
+  if (btnCloseSettings && settingsModal) {
+    btnCloseSettings.addEventListener('click', () => {
+      settingsModal.classList.add('hidden');
+    });
+  }
+
+  if (btnSaveSettings && settingsModal) {
+    btnSaveSettings.addEventListener('click', () => {
+      settingsModal.classList.add('hidden');
     });
   }
 

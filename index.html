@@ -45,6 +45,7 @@
       <!-- A. 左スリムサイドバー -->
       <aside class="w-56 bg-black/70 border-r border-white/5 flex flex-col justify-between p-4 shrink-0 z-40">
         
+        <!-- 上部: ブランドロゴ ＆ メニュー -->
         <div class="space-y-6">
           <div class="flex items-center space-x-3 px-2 pt-2">
             <img src="icon.png" class="w-8 h-8 rounded-xl border border-white/20 object-cover shadow-lg shadow-purple-950/80" alt="Logo" onerror="this.onerror=null; this.outerHTML='<div class=\'w-8 h-8 rounded-xl bg-purple-600 flex items-center justify-center text-white font-bold\'>M</div>';">
@@ -64,25 +65,21 @@
                 </a>
               </nav>
             </div>
-
-            <div>
-              <span class="text-[9px] font-extrabold text-slate-500 uppercase tracking-widest px-2.5 block mb-2">PRESETS</span>
-              <div class="space-y-1" id="filter-presets">
-                <button data-preset="vocal" class="preset-btn active w-full text-left px-3 py-1.5 rounded-xl text-[11px] font-bold text-purple-200 bg-purple-600/30 border border-purple-500/50 transition-all">Vocal Boost</button>
-                <button data-preset="flat" class="preset-btn w-full text-left px-3 py-1.5 rounded-xl text-[11px] font-bold text-slate-400 hover:text-slate-200 hover:bg-white/5 transition-all">Flat (Original)</button>
-                <button data-preset="bass" class="preset-btn w-full text-left px-3 py-1.5 rounded-xl text-[11px] font-bold text-slate-400 hover:text-slate-200 hover:bg-white/5 transition-all">Bass Boost</button>
-                <button data-preset="clear" class="preset-btn w-full text-left px-3 py-1.5 rounded-xl text-[11px] font-bold text-slate-400 hover:text-slate-200 hover:bg-white/5 transition-all">Noise Cut</button>
-              </div>
-            </div>
           </div>
         </div>
 
+        <!-- 下部: SETTINGS (旧BETA UPDATES部分をSETTINGSに変更) ＆ RECONNECT -->
         <div class="space-y-2.5 pt-3 border-t border-white/5">
-          <label class="flex items-center justify-between cursor-pointer select-none text-[10px] font-bold text-slate-400 bg-black/80 p-2.5 rounded-xl border border-white/5 hover:border-purple-500/30 transition-all">
-            <span>BETA UPDATES</span>
-            <input type="checkbox" id="beta-update-toggle" class="rounded border-purple-800 text-purple-600 focus:ring-0 bg-black w-3.5 h-3.5 cursor-pointer">
-          </label>
+          <!-- SETTINGS 設定ボタン -->
+          <button id="btn-open-settings" class="w-full flex items-center justify-between bg-black/80 hover:bg-white/5 border border-white/10 text-slate-300 rounded-xl p-2.5 text-xs font-bold transition-all">
+            <div class="flex items-center space-x-2">
+              <svg class="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+              <span>SETTINGS</span>
+            </div>
+            <span class="text-[9px] bg-purple-900/60 text-purple-300 px-1.5 py-0.5 rounded font-mono">CONFIG</span>
+          </button>
 
+          <!-- RECONNECTボタン -->
           <button id="btn-reconnect" class="w-full flex items-center justify-center space-x-2 bg-purple-600/30 hover:bg-purple-600/45 border border-purple-500/50 text-purple-200 rounded-xl py-2.5 text-xs font-black transition-all active:scale-95">
             <svg class="w-4 h-4 text-purple-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
             <span>RECONNECT</span>
@@ -319,6 +316,40 @@
 
       </main>
 
+    </div>
+  </div>
+
+  <!-- SETTINGS 設定モーダル (BETA UPDATES + 将来拡張用設定スロット) -->
+  <div id="settings-modal" class="hidden fixed inset-0 z-50 bg-black/75 backdrop-blur-md flex items-center justify-center p-4">
+    <div class="bg-[#0b0e18] border border-white/15 rounded-3xl w-full max-w-md p-6 space-y-6 shadow-2xl">
+      <div class="flex items-center justify-between border-b border-white/10 pb-3">
+        <h3 class="text-base font-black text-white flex items-center">
+          <svg class="w-5 h-5 mr-2 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path></svg>
+          MANA RESONANCE SETTINGS
+        </h3>
+        <button id="btn-close-settings" class="text-slate-400 hover:text-white font-bold text-lg">✕</button>
+      </div>
+
+      <div class="space-y-4">
+        <!-- 1. BETA UPDATES トグル -->
+        <div class="bg-black/60 p-3.5 rounded-2xl border border-white/5 flex items-center justify-between">
+          <div>
+            <span class="block text-xs font-bold text-slate-200">BETA UPDATES</span>
+            <span class="text-[10px] text-slate-400">Receive early experimental feature updates</span>
+          </div>
+          <input type="checkbox" id="beta-update-toggle-modal" class="rounded border-purple-800 text-purple-600 focus:ring-0 bg-black w-4 h-4 cursor-pointer">
+        </div>
+
+        <!-- 2. 今後拡張可能な設定スロット -->
+        <div class="bg-black/60 p-3.5 rounded-2xl border border-white/5 space-y-1.5 opacity-60">
+          <span class="block text-xs font-bold text-slate-400">AUDIO GAIN SENSITIVITY (FUTURE SLOT)</span>
+          <div class="text-[10px] text-slate-500 font-mono">Auto Noise Reduction: ENABLED</div>
+        </div>
+      </div>
+
+      <div class="pt-2 flex justify-end">
+        <button id="btn-save-settings" class="bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs px-5 py-2 rounded-xl transition-all">CLOSE / 閉じる</button>
+      </div>
     </div>
   </div>
 
