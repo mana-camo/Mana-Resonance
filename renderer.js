@@ -573,19 +573,21 @@ function updateLoop(timestamp) {
     lastTime = timestamp;
   }
 
-  if (!audioCtx || audioCtx.state === 'suspended') return;
+  // 音声解析処理は audioCtx が稼働中のみ実行
+  if (audioCtx && audioCtx.state === 'running') {
+    analyzeDrumBeats();
+    analyzeVocalPitch();
+    analyzePitchAccuracy(lastValidF0);
+    analyzeBPM();
+    analyzeFormants();
+    analyzeChromaAndEstimateChord();
+  }
 
-  // 各種分析値の処理
-  analyzeDrumBeats();
-  analyzeVocalPitch();
-  analyzePitchAccuracy(lastValidF0);
-  analyzeBPM();
-  analyzeFormants();
+  // 描画処理は audioCtx の有無に関わらず 100% 常時実行 (背景塗りつぶし・格子線・音名テキストを常に表示)
   drawSpectrogram();
   drawPitchTracker();
   drawSpectrum();
   drawParticles();
-  analyzeChromaAndEstimateChord();
 }
 
 // 3バンドドラムビート分析
