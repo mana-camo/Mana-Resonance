@@ -613,21 +613,20 @@ function drawPitchTracker() {
     winPitchCtx.fillRect(0, 0, width, height);
   }
 
-  // ★ 色が薄くなる（フェードアウトする）距離を「少し近く」調整 ★
-  // 微弱な半透明背景 (#020306 & alpha 0.085) を描画して左スクロール時の描画線が速やかに馴染む
+  // ★ 薄くなる（フェードアウトする）タイミングを「少しだけ前（右端近く）」に調整 ★
+  // スクリーン全体に極小アルファ (0.045) の漆黒幕を重ねることで、右端を出て少し進むと前にずれて自然に薄くなり始める
   winPitchCtx.drawImage(winPitchTrackerBuffer, -1.8, 0);
 
   const x = width - 1.8;
-  winPitchCtx.fillStyle = 'rgba(2, 3, 6, 0.25)';
-  winPitchCtx.fillRect(0, 0, width, height); // トレイルのグラデーション距離を馴染ませる
-  winPitchCtx.drawImage(winPitchTrackerBuffer, -1.8, 0);
+  winPitchCtx.fillStyle = 'rgba(2, 3, 6, 0.045)'; // 少し前に薄くなり始める理想のフェードタイミング
+  winPitchCtx.fillRect(0, 0, width, height);
   winPitchCtx.fillStyle = '#020306';
   winPitchCtx.fillRect(x, 0, 1.8, height);
 
   const minMidi = 36;
   const maxMidi = 96;
 
-  // ★ 1.0.8 発光ドット描画 (線を少しだけ繊細で細いシャープなライン半径 1.8px にカスタマイズ) ★
+  // 1.0.8 発光ドット描画 (細いシャープなライン)
   if (lastValidF0 > 0) {
     const midiNoteNum = 12 * Math.log2(lastValidF0 / 440) + 69;
     if (midiNoteNum >= minMidi && midiNoteNum <= maxMidi) {
@@ -636,10 +635,10 @@ function drawPitchTracker() {
       const currentX = width - 1;
 
       winPitchCtx.beginPath();
-      winPitchCtx.arc(currentX, dotY, 1.8, 0, 2 * Math.PI); // 少しだけ細いシャープな線
+      winPitchCtx.arc(currentX, dotY, 1.6, 0, 2 * Math.PI);
       winPitchCtx.fillStyle = '#22c55e';
       winPitchCtx.shadowColor = '#22c55e';
-      winPitchCtx.shadowBlur = 3.5; // エレガントで細身な発光
+      winPitchCtx.shadowBlur = 3.5;
       winPitchCtx.fill();
       winPitchCtx.shadowBlur = 0;
     }
