@@ -82,14 +82,13 @@
           </div>
         </div>
 
-        <!-- 下部: 再接続 (SVGアイコン化) ＆ BETA設定カード -->
+        <!-- 下部: 再接続 ＆ BETA設定カード -->
         <div class="space-y-2.5 pt-3 border-t border-white/5">
           <label class="flex items-center justify-between cursor-pointer select-none text-[10px] font-bold text-slate-400 bg-black/80 p-2.5 rounded-xl border border-white/5 hover:border-purple-500/30 transition-all">
             <span>BETA UPDATES</span>
             <input type="checkbox" id="beta-update-toggle" class="rounded border-purple-800 text-purple-600 focus:ring-0 bg-black w-3.5 h-3.5 cursor-pointer">
           </label>
 
-          <!-- 絵文字廃止・SVGアイコン化したRECONNECTボタン -->
           <button id="btn-reconnect" class="w-full flex items-center justify-center space-x-2 bg-purple-600/30 hover:bg-purple-600/45 border border-purple-500/50 text-purple-200 rounded-xl py-2.5 text-xs font-black transition-all active:scale-95">
             <svg class="w-4 h-4 text-purple-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
             <span>RECONNECT</span>
@@ -97,10 +96,10 @@
         </div>
       </aside>
 
-      <!-- B. 右メインアナリティクスエリア -->
+      <!-- B. 右メインアナリティクスエリア (スクロール可能) -->
       <main class="flex-1 flex flex-col p-5 space-y-4 overflow-y-auto min-w-0">
 
-        <!-- 1. メインヘッダー (Live Analytics に変更) ＆ ドロップゾーン -->
+        <!-- 1. メインヘッダー ＆ ドロップゾーン -->
         <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 shrink-0 pt-1">
           <div>
             <h2 class="text-2xl font-black tracking-tight text-white">
@@ -129,7 +128,7 @@
           </div>
         </div>
 
-        <!-- 2. トップ KPI ステータスカード群 (8カラム 1段完全整列 Liquid Glass Sample) -->
+        <!-- 2. トップ KPI ステータスカード群 (8カラム 1段完全整列) -->
         <section class="grid grid-cols-2 md:grid-cols-8 gap-2.5 shrink-0">
           
           <!-- 1: Pitch F0 -->
@@ -251,7 +250,7 @@
             </div>
           </div>
 
-          <!-- 3段目 (-): Log Hz Spectrum (対数スペクトラム: エリア塗りつぶし復元) -->
+          <!-- 3段目 (-): Log Hz Spectrum (対数スペクトラム) -->
           <div class="flex-1 liquid-glass-card p-3 flex flex-col min-h-[140px] grid-mesh-bg relative overflow-hidden">
             <div class="flex items-center justify-between z-10 mb-1.5 shrink-0">
               <span class="text-[11px] font-black uppercase tracking-wider text-slate-300 flex items-center">
@@ -266,16 +265,64 @@
 
         </section>
 
-        <!-- 4. 非表示互換ダミー -->
+        <!-- 4段目 (下にスクロールで出現): 3-BAND DRUM-BEAT ANALYZER -->
+        <section class="liquid-glass-card p-4 flex flex-col space-y-4 grid-mesh-bg shrink-0">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-black uppercase tracking-wider text-purple-300 flex items-center">
+              <span class="w-2 h-2 rounded-full bg-purple-500 mr-2 animate-pulse"></span>
+              4. 3-Band Drum-Beat Analyzer
+            </span>
+            <span id="beat-energy" class="text-xs font-mono font-bold text-purple-400">0%</span>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
+            <!-- 円形キックパルス -->
+            <div class="flex flex-col items-center justify-center p-3 relative">
+              <div id="beat-pulse-outer" class="w-24 h-24 rounded-full border-2 border-purple-500/30 flex items-center justify-center transition-all duration-100">
+                <div id="beat-pulse-inner" class="w-16 h-16 rounded-full bg-purple-600/30 border border-purple-400 flex flex-col items-center justify-center transition-all duration-75">
+                  <span class="text-[8px] font-bold text-slate-300">KICK PULSE</span>
+                  <span id="kick-peak-display" class="text-xs font-black font-mono text-purple-200">0%</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- 3バンド Level Bars (LOW / MID / HIGH) -->
+            <div class="md:col-span-2 space-y-2.5">
+              <div>
+                <div class="flex justify-between text-[10px] font-mono mb-1">
+                  <span class="text-slate-400 font-bold">LOW (Kick / Bass: &lt;150Hz)</span>
+                  <span id="low-val" class="text-purple-300 font-bold">-100 dB</span>
+                </div>
+                <div class="w-full bg-black/60 h-2 rounded-full overflow-hidden border border-white/10">
+                  <div id="bar-low" class="bg-gradient-to-r from-purple-600 to-indigo-400 h-full w-0 transition-all duration-75"></div>
+                </div>
+              </div>
+
+              <div>
+                <div class="flex justify-between text-[10px] font-mono mb-1">
+                  <span class="text-slate-400 font-bold">MID (Snare / Vocal: 150Hz-2.5kHz)</span>
+                  <span id="mid-val" class="text-indigo-300 font-bold">-100 dB</span>
+                </div>
+                <div class="w-full bg-black/60 h-2 rounded-full overflow-hidden border border-white/10">
+                  <div id="bar-mid" class="bg-gradient-to-r from-indigo-500 to-pink-500 h-full w-0 transition-all duration-75"></div>
+                </div>
+              </div>
+
+              <div>
+                <div class="flex justify-between text-[10px] font-mono mb-1">
+                  <span class="text-slate-400 font-bold">HIGH (Hi-Hat / Cymbal: &gt;2.5kHz)</span>
+                  <span id="high-val" class="text-pink-300 font-bold">-100 dB</span>
+                </div>
+                <div class="w-full bg-black/60 h-2 rounded-full overflow-hidden border border-white/10">
+                  <div id="bar-high" class="bg-gradient-to-r from-pink-500 to-rose-400 h-full w-0 transition-all duration-75"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 非表示ボタン互換ダミー -->
         <div class="hidden">
-          <div id="beat-pulse-outer"></div>
-          <div id="beat-pulse-inner"></div>
-          <span id="kick-peak-display"></span>
-          <span id="low-val"></span><div id="bar-low"></div>
-          <span id="mid-val"></span><div id="bar-mid"></div>
-          <span id="high-val"></span><div id="bar-high"></div>
-          <button id="btn-reset-range"></button>
-          <!-- 非表示ボタン互換 -->
           <button id="btn-close"></button>
           <button id="btn-minimize"></button>
           <button id="btn-maximize"></button>

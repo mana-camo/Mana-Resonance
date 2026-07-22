@@ -11,10 +11,10 @@ function createWindow() {
   const isMac = process.platform === 'darwin';
 
   mainWindow = new BrowserWindow({
-    width: 1280,
-    height: 850,
-    minWidth: 1000,
-    minHeight: 650,
+    width: 1480,
+    height: 960,
+    minWidth: 1100,
+    minHeight: 700,
     frame: true, // OS標準のネイティブウィンドウ枠を使用
     titleBarStyle: isMac ? 'hiddenInset' : 'default', // Macでは純正インセット丸ボタン、Winでは標準タイトルバー
     trafficLightPosition: isMac ? { x: 12, y: 12 } : undefined,

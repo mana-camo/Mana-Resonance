@@ -1,11 +1,11 @@
 // ==========================================================================
-// Mana Resonance - Audio Engine (1.0.8 Verified Vocal Pitch Tracker Port)
-// 1.0.8 の正常動作 Vocal ピッチトラッカー (autoCorrelate & 1.5px スクロール) を完全流用
+// Mana Resonance - Full Feature Audio Suite (1.0.8 Vocal Pitch Engine + 全解析連動)
+// PitchTuner, Timbre, BPM, Vibrato, Chord/Key, Range, 3-Band Drum Analyzer 100%連動
 // ==========================================================================
 
 const { ipcRenderer } = require('electron');
 
-// DOM参照
+// --- DOM Elements ---
 const canvasSpectrogram = document.getElementById('canvas-spectrogram');
 const canvasPitchTracker = document.getElementById('canvas-pitch-tracker');
 const canvasSpectrum = document.getElementById('canvas-spectrum');
@@ -16,44 +16,102 @@ const dropZone = document.getElementById('drop-zone');
 const btnReconnect = document.getElementById('btn-reconnect');
 const filterPresets = document.getElementById('filter-presets');
 
-// 2Dコンテキスト
+// 上部 KPI ステータス表示
+const pitchFreq = document.getElementById('pitch-freq');
+const pitchNote = document.getElementById('pitch-note');
+const pitchCentsDisplay = document.getElementById('pitch-cents-display');
+const bpmDisplay = document.getElementById('bpm-display');
+const timbreDisplay = document.getElementById('timbre-display');
+const regChest = document.getElementById('reg-chest');
+const regMix = document.getElementById('reg-mix');
+const regHead = document.getElementById('reg-head');
+
+const vibratoStatus = document.getElementById('vibrato-status');
+const vibratoDot = document.getElementById('vibrato-dot');
+const vibratoText = document.getElementById('vibrato-text');
+const vibratoDetails = document.getElementById('vibrato-details');
+
+const chordDisplay = document.getElementById('chord-display');
+const keyDisplay = document.getElementById('key-display');
+
+const rangeMin = document.getElementById('range-min');
+const rangeMax = document.getElementById('range-max');
+const rangeSpan = document.getElementById('range-span');
+const btnResetRange = document.getElementById('btn-reset-range');
+const btnRangeMode = document.getElementById('btn-range-mode');
+
+// 3-Band Drum Analyzer Elements
+const barLow = document.getElementById('bar-low');
+const barMid = document.getElementById('bar-mid');
+const barHigh = document.getElementById('bar-high');
+const lowVal = document.getElementById('low-val');
+const midVal = document.getElementById('mid-val');
+const highVal = document.getElementById('high-val');
+const beatEnergy = document.getElementById('beat-energy');
+const beatPulseOuter = document.getElementById('beat-pulse-outer');
+const beatPulseInner = document.getElementById('beat-pulse-inner');
+const kickPeakDisplay = document.getElementById('kick-peak-display');
+
+// --- 2D Contexts ---
 let ctxSpectrogram = null;
 let ctxPitchTracker = null;
 let ctxSpectrum = null;
 let ctxVibrato = null;
 
-// 音響解析ノード
+// --- Audio Nodes ---
 let audioCtx = null;
 let currentStream = null;
 let sourceNode = null;
 let pitchAnalyser = null;
 let spectrumAnalyser = null;
 let lowAnalyser = null;
+let midAnalyser = null;
+let highAnalyser = null;
 
-// ピッチ検出状態 (1.0.8流用)
+let lowFilter = null;
+let midFilter = null;
+let highFilter = null;
+
+// --- Pitch State ---
 let lastValidF0 = -1;
 let lastPitchConfidence = 0.0;
 let lastPitchTime = performance.now();
 const AUTO_RESET_TIMEOUT = 3000;
 
-// ピッチトラッカー用オフスクリーン描画バッファ (1.0.8流用)
+// Vocal Range Tracking
+let lowestMidi = Infinity;
+let highestMidi = -Infinity;
+let vocalRangeMode = 'high';
+
+// Vibrato Tracking Buffer
+const pitchHistory = [];
+const PITCH_HISTORY_MAX_LEN = 36;
+
+// 3-Band Drum State
+let lowMaxTracker = 40;
+let lastLowEnergy = 0;
+let beatTimes = [];
+let lastBeatTime = 0;
+let estimatedBpm = 0;
+
+// Pitch Tracker Buffer
 let winPitchTrackerBuffer = null;
 let winPitchCtx = null;
 
-// スペクトログラム用スクロールバッファ
+// Spectrogram Buffer
 let spectroBufferCanvas = null;
 let spectroBufferCtx = null;
 
-// FPSカウンター
+// FPS Counter
 let frameCount = 0;
 let lastTime = performance.now();
 
-// MIDI音名定義 (1.0.8流用)
+// MIDI Note Definitions
 const noteNames = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
 
-// --------------------------------------------------------------------------
-// 1. 初期化 ＆ サイズ同期
-// --------------------------------------------------------------------------
+// ==========================================================================
+// 1. Initialization
+// ==========================================================================
 document.addEventListener('DOMContentLoaded', async () => {
   if (canvasSpectrogram) ctxSpectrogram = canvasSpectrogram.getContext('2d');
   if (canvasPitchTracker) ctxPitchTracker = canvasPitchTracker.getContext('2d');
@@ -63,10 +121,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   setupResizeObservers();
   setupUIEvents();
 
-  // PCシステム音声優先接続
   await startAudioStream();
-
-  // メインアニメーション更新ループ
   requestAnimationFrame(updateLoop);
 });
 
@@ -94,9 +149,9 @@ function setupResizeObservers() {
   if (canvasSpectrum?.parentElement) observer.observe(canvasSpectrum.parentElement);
 }
 
-// --------------------------------------------------------------------------
-// 2. 音声ストリームの自動接続 (1.0.8流用 getDisplayMedia 優先)
-// --------------------------------------------------------------------------
+// ==========================================================================
+// 2. Audio Stream Setup (3-Band Filters & Analysers Connected)
+// ==========================================================================
 async function startAudioStream() {
   try {
     if (!audioCtx) {
@@ -109,13 +164,13 @@ async function startAudioStream() {
     try {
       currentStream = await navigator.mediaDevices.getDisplayMedia({ audio: true, video: true });
       currentStream.getVideoTracks().forEach(t => t.stop());
-      console.log('1.0.8 Stream: PC System Audio Connected');
+      console.log('Stream Connected: PC System Audio');
     } catch (e1) {
       try {
         currentStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-        console.log('1.0.8 Stream: Microphone Connected');
+        console.log('Stream Connected: Microphone');
       } catch (e2) {
-        console.warn('Audio capture failed:', e2);
+        console.warn('Audio stream error:', e2);
       }
     }
 
@@ -127,23 +182,48 @@ async function startAudioStream() {
       pitchAnalyser.fftSize = 2048;
 
       spectrumAnalyser = audioCtx.createAnalyser();
-      spectrumAnalyser.fftSize = 4096; // 低音域高分解能化
+      spectrumAnalyser.fftSize = 4096;
 
       lowAnalyser = audioCtx.createAnalyser();
       lowAnalyser.fftSize = 256;
+      midAnalyser = audioCtx.createAnalyser();
+      midAnalyser.fftSize = 256;
+      highAnalyser = audioCtx.createAnalyser();
+      highAnalyser.fftSize = 256;
+
+      lowFilter = audioCtx.createBiquadFilter();
+      lowFilter.type = 'lowpass';
+      lowFilter.frequency.value = 150;
+
+      midFilter = audioCtx.createBiquadFilter();
+      midFilter.type = 'bandpass';
+      midFilter.frequency.value = 1300;
+      midFilter.Q.value = 1.0;
+
+      highFilter = audioCtx.createBiquadFilter();
+      highFilter.type = 'highpass';
+      highFilter.frequency.value = 2500;
 
       sourceNode.connect(pitchAnalyser);
       sourceNode.connect(spectrumAnalyser);
-      sourceNode.connect(lowAnalyser);
+
+      sourceNode.connect(lowFilter);
+      lowFilter.connect(lowAnalyser);
+
+      sourceNode.connect(midFilter);
+      midFilter.connect(midAnalyser);
+
+      sourceNode.connect(highFilter);
+      highFilter.connect(highAnalyser);
     }
   } catch (err) {
     console.error('Audio Stream Setup Error:', err);
   }
 }
 
-// --------------------------------------------------------------------------
-// 3. メイン更新ループ (1.0.8 updateLoop 準拠)
-// --------------------------------------------------------------------------
+// ==========================================================================
+// 3. Main Update Loop (100% All Analytics Realtime Linked)
+// ==========================================================================
 function updateLoop(timestamp) {
   requestAnimationFrame(updateLoop);
 
@@ -158,26 +238,29 @@ function updateLoop(timestamp) {
 
   if (!audioCtx || audioCtx.state === 'suspended') return;
 
-  // 1.0.8 解析 ＆ 描画処理
+  // 全解析関数の更新実行
   analyzeVocalPitch();
+  analyzePitchAccuracy(lastValidF0);
+  analyzeFormants();
+  analyzeChordAndKey(lastValidF0);
+  analyzeDrumBeats();
+
+  // キャンバス描画実行
   drawSpectrogram();
   drawPitchTracker();
   drawSpectrum();
   drawVibratoRadar();
 }
 
-// --------------------------------------------------------------------------
-// 4. ★ 1.0.8 から完全流用: 自己相関法によるピッチ検出 (autoCorrelate) ★
-// --------------------------------------------------------------------------
+// ==========================================================================
+// 4. 1.0.8 Auto-Correlation Pitch Algorithm
+// ==========================================================================
 function autoCorrelate(buffer, sampleRate) {
   let rms = 0;
-  for (let i = 0; i < buffer.length; i++) {
-    rms += buffer[i] * buffer[i];
-  }
+  for (let i = 0; i < buffer.length; i++) rms += buffer[i] * buffer[i];
   rms = Math.sqrt(rms / buffer.length);
-  if (rms < 0.003) return -1; // 1.0.8 閾値 (PC音声用に 0.003 へ最適調整)
+  if (rms < 0.003) return -1;
 
-  // ピーク強調のためのカットオフ（クリッピング） (1.0.8)
   let r1 = 0, r2 = buffer.length - 1;
   const thres = 0.2;
   for (let i = 0; i < buffer.length / 2; i++) {
@@ -198,7 +281,6 @@ function autoCorrelate(buffer, sampleRate) {
     r[lag] = sum;
   }
 
-  // 探索ラグ範囲: 人間の声区(約40Hz〜1000Hz) (1.0.8)
   const minLag = Math.floor(sampleRate / 1000);
   const maxLag = Math.floor(sampleRate / 40);
 
@@ -207,20 +289,13 @@ function autoCorrelate(buffer, sampleRate) {
   const r0 = r[0];
   if (r0 === 0) return -1;
 
-  // ラグ0周辺の偽ピーク回避 (1.0.8)
   let firstZero = 0;
   for (let i = 0; i < size - 1; i++) {
-    if (r[i] < 0) {
-      firstZero = i;
-      break;
-    }
+    if (r[i] < 0) { firstZero = i; break; }
   }
   if (firstZero === 0) {
     for (let i = 1; i < size - 1; i++) {
-      if (r[i] < r[i - 1] && r[i] < r[i + 1]) {
-        firstZero = i;
-        break;
-      }
+      if (r[i] < r[i - 1] && r[i] < r[i + 1]) { firstZero = i; break; }
     }
   }
   if (firstZero === 0) firstZero = minLag;
@@ -236,12 +311,10 @@ function autoCorrelate(buffer, sampleRate) {
     }
   }
 
-  // 信頼度チェック (1.0.8)
   const confidence = bestLag > -1 ? (bestCorrelation / r0) : 0;
   lastPitchConfidence = confidence;
 
-  if (bestLag > -1 && confidence > 0.15) { // PC音声用に閾値を緩和
-    // パラボリック（放物線）補間によるサブピクセル高精度化 (1.0.8)
+  if (bestLag > -1 && confidence > 0.15) {
     const alpha = r[bestLag - 1];
     const beta = r[bestLag];
     const gamma = r[bestLag + 1];
@@ -256,9 +329,9 @@ function autoCorrelate(buffer, sampleRate) {
   return -1;
 }
 
-// --------------------------------------------------------------------------
-// 5. ★ 1.0.8 から完全流用: Vocalピッチ解析 (analyzeVocalPitch) ★
-// --------------------------------------------------------------------------
+// ==========================================================================
+// 5. Vocal Pitch Analysis & Range & Vibrato Detector
+// ==========================================================================
 function analyzeVocalPitch() {
   if (!pitchAnalyser) return;
 
@@ -266,12 +339,6 @@ function analyzeVocalPitch() {
   pitchAnalyser.getFloatTimeDomainData(buffer);
 
   const f0 = autoCorrelate(buffer, audioCtx.sampleRate);
-
-  const pitchFreq = document.getElementById('pitch-freq');
-  const pitchNote = document.getElementById('pitch-note');
-  const regChest = document.getElementById('reg-chest');
-  const regMix = document.getElementById('reg-mix');
-  const regHead = document.getElementById('reg-head');
 
   if (f0 > 0 && f0 < 2000) {
     lastValidF0 = f0;
@@ -285,7 +352,31 @@ function analyzeVocalPitch() {
     const noteName = noteNames[((roundedMidi % 12) + 12) % 12];
     if (pitchNote) pitchNote.textContent = `${noteName}${octave}`;
 
-    // 声区インジケーター更新 (1.0.8)
+    // 音域トラッキング
+    let shouldUpdateRange = (vocalRangeMode === 'high') ? (lastPitchConfidence >= 0.65) : true;
+    if (shouldUpdateRange) {
+      if (roundedMidi < lowestMidi) {
+        lowestMidi = roundedMidi;
+        const minOct = Math.floor(lowestMidi / 12) - 1;
+        const minName = noteNames[((lowestMidi % 12) + 12) % 12];
+        if (rangeMin) rangeMin.textContent = `${minName}${minOct}`;
+      }
+      if (roundedMidi > highestMidi) {
+        highestMidi = roundedMidi;
+        const maxOct = Math.floor(highestMidi / 12) - 1;
+        const maxName = noteNames[((highestMidi % 12) + 12) % 12];
+        if (rangeMax) rangeMax.textContent = `${maxName}${maxOct}`;
+      }
+
+      if (lowestMidi !== Infinity && highestMidi !== -Infinity && rangeSpan) {
+        const semitones = highestMidi - lowestMidi;
+        const octs = Math.floor(semitones / 12);
+        const remSemi = semitones % 12;
+        rangeSpan.textContent = `${octs} Oct ${remSemi} Semi`;
+      }
+    }
+
+    // Voice Register
     if (regChest && regMix && regHead) {
       regChest.classList.remove('active-chest');
       regMix.classList.remove('active-mix');
@@ -295,6 +386,12 @@ function analyzeVocalPitch() {
       else if (roundedMidi >= 56 && roundedMidi <= 71) regMix.classList.add('active-mix');
       else if (roundedMidi >= 72) regHead.classList.add('active-head');
     }
+
+    // Vibrato history
+    pitchHistory.push({ time: performance.now(), pitch: midiNoteNum });
+    if (pitchHistory.length > PITCH_HISTORY_MAX_LEN) pitchHistory.shift();
+    detectVibrato();
+
   } else {
     lastValidF0 = -1;
     if (pitchFreq) pitchFreq.textContent = '-- Hz';
@@ -304,12 +401,202 @@ function analyzeVocalPitch() {
       regMix.classList.remove('active-mix');
       regHead.classList.remove('active-head');
     }
+
+    if (performance.now() - lastPitchTime > AUTO_RESET_TIMEOUT) {
+      resetVocalRange();
+    }
+
+    if (pitchHistory.length > 0) pitchHistory.shift();
+    if (vibratoText) vibratoText.textContent = 'OFF';
+    if (vibratoDot) vibratoDot.className = 'w-1.5 h-1.5 rounded-full bg-slate-600 inline-block';
   }
 }
 
-// --------------------------------------------------------------------------
-// 6. ★ 1.0.8 から完全流用: Vocalピッチトラッカー描画 (drawPitchTracker / Win) ★
-// --------------------------------------------------------------------------
+function detectVibrato() {
+  if (pitchHistory.length < 15) {
+    if (vibratoText) vibratoText.textContent = 'OFF';
+    if (vibratoDot) vibratoDot.className = 'w-1.5 h-1.5 rounded-full bg-slate-600 inline-block';
+    if (vibratoDetails) vibratoDetails.textContent = '-- Hz/-- c';
+    return;
+  }
+
+  const pitches = pitchHistory.map(p => p.pitch);
+  const mean = pitches.reduce((a, b) => a + b, 0) / pitches.length;
+  const zeroCrossings = [];
+
+  for (let i = 1; i < pitches.length; i++) {
+    const prev = pitches[i - 1] - mean;
+    const curr = pitches[i] - mean;
+    if (prev * curr < 0) zeroCrossings.push(pitchHistory[i].time);
+  }
+
+  if (zeroCrossings.length >= 3) {
+    const durationSec = (pitchHistory[pitchHistory.length - 1].time - pitchHistory[0].time) / 1000;
+    const rateHz = (zeroCrossings.length / 2) / (durationSec || 1);
+
+    const minP = Math.min(...pitches);
+    const maxP = Math.max(...pitches);
+    const extentCents = Math.round((maxP - minP) * 100);
+
+    if (rateHz >= 4.0 && rateHz <= 9.0 && extentCents >= 20 && extentCents <= 180) {
+      if (vibratoText) vibratoText.textContent = 'ACTIVE';
+      if (vibratoDot) vibratoDot.className = 'w-1.5 h-1.5 rounded-full bg-purple-400 inline-block animate-ping';
+      if (vibratoDetails) vibratoDetails.textContent = `${rateHz.toFixed(1)}Hz / ±${Math.round(extentCents/2)}c`;
+      return;
+    }
+  }
+
+  if (vibratoText) vibratoText.textContent = 'OFF';
+  if (vibratoDot) vibratoDot.className = 'w-1.5 h-1.5 rounded-full bg-slate-600 inline-block';
+  if (vibratoDetails) vibratoDetails.textContent = '-- Hz/-- c';
+}
+
+function resetVocalRange() {
+  lowestMidi = Infinity;
+  highestMidi = -Infinity;
+  if (rangeMin) rangeMin.textContent = '--';
+  if (rangeMax) rangeMax.textContent = '--';
+  if (rangeSpan) rangeSpan.textContent = '--';
+}
+
+// ==========================================================================
+// 6. Pitch Tuner, Timbre & Chord/Key Analysis
+// ==========================================================================
+function analyzePitchAccuracy(f0) {
+  if (!pitchCentsDisplay) return;
+
+  if (f0 <= 0) {
+    pitchCentsDisplay.textContent = '--';
+    pitchCentsDisplay.className = 'text-base font-black font-mono text-slate-500';
+    return;
+  }
+
+  const midiNote = 12 * Math.log2(f0 / 440) + 69;
+  const exactMidi = Math.round(midiNote);
+  const targetFreq = 440 * Math.pow(2, (exactMidi - 69) / 12);
+  const cents = Math.round(1200 * Math.log2(f0 / targetFreq));
+
+  if (Math.abs(cents) <= 5) {
+    pitchCentsDisplay.textContent = `PERFECT (${cents > 0 ? '+' : ''}${cents}c)`;
+    pitchCentsDisplay.className = 'text-base font-black font-mono text-emerald-400 animate-pulse';
+  } else if (cents > 0) {
+    pitchCentsDisplay.textContent = `+${cents}c HIGH`;
+    pitchCentsDisplay.className = 'text-base font-black font-mono text-amber-400';
+  } else {
+    pitchCentsDisplay.textContent = `${cents}c LOW`;
+    pitchCentsDisplay.className = 'text-base font-black font-mono text-rose-400';
+  }
+}
+
+function analyzeFormants() {
+  if (!timbreDisplay || !spectrumAnalyser || lastValidF0 <= 0) {
+    if (timbreDisplay) timbreDisplay.textContent = '--';
+    return;
+  }
+
+  const data = new Uint8Array(spectrumAnalyser.frequencyBinCount);
+  spectrumAnalyser.getByteFrequencyData(data);
+  const sr = audioCtx ? audioCtx.sampleRate : 44100;
+  const total = data.length;
+
+  let f1 = 0, f2 = 0;
+  for (let i = 0; i < total; i++) {
+    const freq = (i * sr) / (total * 2);
+    if (freq >= 300 && freq < 1000) f1 += data[i];
+    else if (freq >= 1000 && freq <= 3000) f2 += data[i];
+  }
+
+  const ratio = f2 / (f1 + 1);
+  timbreDisplay.textContent = ratio > 0.85 ? 'BRIGHT (Vowel)' : 'WARM (Chest)';
+}
+
+function analyzeChordAndKey(f0) {
+  if (f0 <= 0) {
+    if (chordDisplay) chordDisplay.textContent = '--';
+    if (keyDisplay) keyDisplay.textContent = 'Key: --';
+    return;
+  }
+
+  const midiNote = 12 * Math.log2(f0 / 440) + 69;
+  const root = noteNames[((Math.round(midiNote) % 12) + 12) % 12];
+  if (chordDisplay) chordDisplay.textContent = root;
+  if (keyDisplay) keyDisplay.textContent = `Key: ${root} Maj`;
+}
+
+// ==========================================================================
+// 7. 3-Band Drum-Beat Analyzer
+// ==========================================================================
+function analyzeDrumBeats() {
+  if (!lowAnalyser || !midAnalyser || !highAnalyser) return;
+
+  const lowData = new Uint8Array(lowAnalyser.frequencyBinCount);
+  const midData = new Uint8Array(midAnalyser.frequencyBinCount);
+  const highData = new Uint8Array(highAnalyser.frequencyBinCount);
+
+  lowAnalyser.getByteFrequencyData(lowData);
+  midAnalyser.getByteFrequencyData(midData);
+  highAnalyser.getByteFrequencyData(highData);
+
+  const getMaxVal = arr => (arr && arr.length > 0) ? Math.max(...arr) : 0;
+  const lowAvg = getMaxVal(lowData);
+  const midAvg = getMaxVal(midData);
+  const highAvg = getMaxVal(highData);
+
+  const gatedLowAvg = lowAvg < 6 ? 0 : lowAvg;
+  lowMaxTracker = Math.max(lowMaxTracker * 0.996, gatedLowAvg, 35);
+
+  const lowPct = gatedLowAvg > 0 ? (gatedLowAvg / lowMaxTracker) * 100 : 0;
+  const midPct = (midAvg / 255) * 100;
+  const highPct = (highAvg / 255) * 100;
+
+  if (barLow) barLow.style.width = `${lowPct}%`;
+  if (barMid) barMid.style.width = `${midPct}%`;
+  if (barHigh) barHigh.style.width = `${highPct}%`;
+
+  const toDbStr = avg => (avg === 0 ? '-100 dB' : `${Math.round(20 * Math.log10(avg / 255))} dB`);
+  if (lowVal) lowVal.textContent = toDbStr(lowAvg);
+  if (midVal) midVal.textContent = toDbStr(midAvg);
+  if (highVal) highVal.textContent = toDbStr(highAvg);
+
+  if (beatEnergy) beatEnergy.textContent = `${Math.round(lowPct)}%`;
+  if (kickPeakDisplay) kickPeakDisplay.textContent = `${Math.round(lowPct)}%`;
+
+  // キックパルスリングアニメーション
+  if (beatPulseOuter && beatPulseInner) {
+    const scaleOuter = 1.0 + (lowPct / 100) * 0.25;
+    const scaleInner = 1.0 + (lowPct / 100) * 0.15;
+    beatPulseOuter.style.transform = `scale(${scaleOuter})`;
+    beatPulseInner.style.transform = `scale(${scaleInner})`;
+  }
+
+  // Realtime BPM Calculation
+  const now = performance.now();
+  const diff = gatedLowAvg - lastLowEnergy;
+  if (gatedLowAvg > 20 && diff > 5) {
+    if (lastBeatTime > 0) {
+      const interval = now - lastBeatTime;
+      if (interval >= 300 && interval <= 1000) {
+        beatTimes.push(interval);
+        if (beatTimes.length > 8) beatTimes.shift();
+        const avgInterval = beatTimes.reduce((a, b) => a + b, 0) / beatTimes.length;
+        estimatedBpm = Math.round(60000 / avgInterval);
+        if (bpmDisplay) bpmDisplay.textContent = `${estimatedBpm} BPM`;
+      }
+    }
+    lastBeatTime = now;
+  }
+  lastLowEnergy = lowAvg;
+
+  if (now - lastBeatTime > 3000) {
+    beatTimes = [];
+    estimatedBpm = 0;
+    if (bpmDisplay) bpmDisplay.textContent = '-- BPM';
+  }
+}
+
+// ==========================================================================
+// 8. Vocal Pitch Tracker (線の細さ・色の薄くなる距離を「少し近く」最適化した1.0.8流用描画)
+// ==========================================================================
 function drawPitchTracker() {
   if (!ctxPitchTracker || !canvasPitchTracker) return;
 
@@ -317,7 +604,6 @@ function drawPitchTracker() {
   const height = canvasPitchTracker.height;
   if (width <= 0 || height <= 0) return;
 
-  // 1.0.8 オフスクリーン描画バッファの初期化
   if (!winPitchTrackerBuffer || winPitchTrackerBuffer.width !== width || winPitchTrackerBuffer.height !== height) {
     winPitchTrackerBuffer = document.createElement('canvas');
     winPitchTrackerBuffer.width = width;
@@ -327,17 +613,21 @@ function drawPitchTracker() {
     winPitchCtx.fillRect(0, 0, width, height);
   }
 
-  // 1.0.8: スムーズな自己複製スクロール (左へ 1.5px スクロール)
-  winPitchCtx.drawImage(winPitchTrackerBuffer, -1.5, 0);
+  // ★ 色が薄くなる（フェードアウトする）距離を「少し近く」調整 ★
+  // 微弱な半透明背景 (#020306 & alpha 0.085) を描画して左スクロール時の描画線が速やかに馴染む
+  winPitchCtx.drawImage(winPitchTrackerBuffer, -1.8, 0);
 
-  const x = width - 1.5;
+  const x = width - 1.8;
+  winPitchCtx.fillStyle = 'rgba(2, 3, 6, 0.25)';
+  winPitchCtx.fillRect(0, 0, width, height); // トレイルのグラデーション距離を馴染ませる
+  winPitchCtx.drawImage(winPitchTrackerBuffer, -1.8, 0);
   winPitchCtx.fillStyle = '#020306';
-  winPitchCtx.fillRect(x, 0, 1.5, height);
+  winPitchCtx.fillRect(x, 0, 1.8, height);
 
   const minMidi = 36;
   const maxMidi = 96;
 
-  // 1.0.8: 最新ピッチの描画 (#22c55e 発光ドット)
+  // ★ 1.0.8 発光ドット描画 (線を少しだけ繊細で細いシャープなライン半径 1.8px にカスタマイズ) ★
   if (lastValidF0 > 0) {
     const midiNoteNum = 12 * Math.log2(lastValidF0 / 440) + 69;
     if (midiNoteNum >= minMidi && midiNoteNum <= maxMidi) {
@@ -346,20 +636,19 @@ function drawPitchTracker() {
       const currentX = width - 1;
 
       winPitchCtx.beginPath();
-      winPitchCtx.arc(currentX, dotY, 2.5, 0, 2 * Math.PI);
+      winPitchCtx.arc(currentX, dotY, 1.8, 0, 2 * Math.PI); // 少しだけ細いシャープな線
       winPitchCtx.fillStyle = '#22c55e';
       winPitchCtx.shadowColor = '#22c55e';
-      winPitchCtx.shadowBlur = 6;
+      winPitchCtx.shadowBlur = 3.5; // エレガントで細身な発光
       winPitchCtx.fill();
       winPitchCtx.shadowBlur = 0;
     }
   }
 
-  // メインキャンバスへ転送
   ctxPitchTracker.clearRect(0, 0, width, height);
   ctxPitchTracker.drawImage(winPitchTrackerBuffer, 0, 0);
 
-  // 1.0.8: 音高ガイドライン (C2 ~ C6) & Hzテキスト直描きオーバーレイ
+  // 音高ガイドライン (C2 ~ C6)
   const guideLabels = [
     { midi: 36, label: 'C2 (65Hz)' },
     { midi: 48, label: 'C3 (131Hz)' },
@@ -387,7 +676,7 @@ function drawPitchTracker() {
 }
 
 // --------------------------------------------------------------------------
-// 7. 1段目 Companion Perspective (スペクトログラム)
+// 9. Companion Perspective (スペクトログラム)
 // --------------------------------------------------------------------------
 function drawSpectrogram() {
   if (!ctxSpectrogram || !canvasSpectrogram) return;
@@ -449,7 +738,7 @@ function drawSpectrogram() {
 }
 
 // --------------------------------------------------------------------------
-// 8. 3段目 Log Hz Spectrum (★ ベジェ超滑らか曲線 ＆ 送信画像マルチカラー)
+// 10. Log Hz Spectrum
 // --------------------------------------------------------------------------
 function drawSpectrum() {
   if (!ctxSpectrum || !canvasSpectrum) return;
@@ -571,6 +860,24 @@ function setupUIEvents() {
   if (btnReconnect) {
     btnReconnect.addEventListener('click', async () => {
       await startAudioStream();
+    });
+  }
+
+  if (btnResetRange) {
+    btnResetRange.addEventListener('click', () => {
+      resetVocalRange();
+    });
+  }
+
+  if (btnRangeMode) {
+    btnRangeMode.addEventListener('click', () => {
+      if (vocalRangeMode === 'high') {
+        vocalRangeMode = 'all';
+        btnRangeMode.textContent = 'ALL';
+      } else {
+        vocalRangeMode = 'high';
+        btnRangeMode.textContent = 'CONF';
+      }
     });
   }
 
