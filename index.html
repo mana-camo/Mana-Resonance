@@ -3,30 +3,44 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Mana Resonance - Aether Liquid Glass Suite</title>
+  <title>Mana Resonance</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="index.css">
 </head>
 <body class="overflow-hidden select-none p-3 h-screen box-border">
 
-  <!-- メイン Aether Liquid Glass アプリケーションフレーム -->
+  <!-- Liquid Glass Sample.txt より完全流用: SVG Distortion Filter -->
+  <svg width="0" height="0" style="position: absolute;">
+    <defs>
+      <filter id="glass-distortion" x="0%" y="0%" width="100%" height="100%">
+        <feTurbulence 
+          type="fractalNoise" 
+          baseFrequency="0.008 0.008"
+          numOctaves="2" 
+          seed="92" 
+          result="noise" 
+        />
+        <feGaussianBlur 
+          in="noise" 
+          stdDeviation="2" 
+          result="blurred" 
+        />
+        <feDisplacementMap 
+          in="SourceGraphic" 
+          in2="blurred" 
+          scale="150"
+          xChannelSelector="R" 
+          yChannelSelector="G" 
+        />
+      </filter>
+    </defs>
+  </svg>
+
+  <!-- メイン Liquid Glass アプリケーションフレーム (Mac UI完全排除) -->
   <div class="app-window-frame flex flex-col h-full w-full rounded-3xl overflow-hidden relative">
 
-    <!-- 1. macOS風 カスタムタイトルバー -->
-    <header class="title-bar flex items-center justify-between px-5 h-10 shrink-0 z-50">
-      <div class="window-controls flex space-x-2">
-        <button id="btn-close" class="ctrl-btn bg-[#ff5f56]" title="閉じる"></button>
-        <button id="btn-minimize" class="ctrl-btn bg-[#ffbd2e]" title="最小化"></button>
-        <button id="btn-maximize" class="ctrl-btn bg-[#27c93f]" title="最大化"></button>
-      </div>
-      <div class="text-[10px] font-mono tracking-widest text-slate-400 font-bold uppercase">
-        MANA RESONANCE — AETHER LIQUID GLASS ANALYTICS
-      </div>
-      <div class="w-16"></div>
-    </header>
-
-    <!-- 2. 本体レイアウト (左サイドバー ＋ 右メインアナリティクス) -->
+    <!-- 本体レイアウト (左サイドバー ＋ 右メインアナリティクス) -->
     <div class="flex-1 flex overflow-hidden min-h-0">
 
       <!-- A. 左スリムサイドバー -->
@@ -34,13 +48,11 @@
         
         <!-- 上部: ブランドロゴ ＆ メニュー -->
         <div class="space-y-6">
-          <!-- ブランドロゴ -->
-          <div class="flex items-center space-x-3 px-2 pt-1">
-            <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-purple-600 via-violet-600 to-pink-600 flex items-center justify-center shadow-lg shadow-purple-950/80 border border-white/30">
-              <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-            </div>
+          <!-- ブランドロゴ (icon.png & MANA.RESONANCE) -->
+          <div class="flex items-center space-x-3 px-2 pt-2">
+            <img src="icon.png" class="w-8 h-8 rounded-xl border border-white/20 object-cover shadow-lg shadow-purple-950/80" alt="Logo" onerror="this.onerror=null; this.outerHTML='<div class=\'w-8 h-8 rounded-xl bg-purple-600 flex items-center justify-center text-white font-bold\'>M</div>';">
             <div>
-              <h1 class="text-xs font-black tracking-wider text-white leading-tight">MANA<span class="text-purple-400">.PRO</span></h1>
+              <h1 class="text-xs font-black tracking-wider text-white leading-tight">MANA<span class="text-purple-400">.RESONANCE</span></h1>
               <p class="text-[9px] text-slate-500 font-mono font-semibold">STUDIO v1.0.9</p>
             </div>
           </div>
@@ -70,15 +82,16 @@
           </div>
         </div>
 
-        <!-- 下部: 再接続 ＆ BETA設定カード -->
+        <!-- 下部: 再接続 (SVGアイコン化) ＆ BETA設定カード -->
         <div class="space-y-2.5 pt-3 border-t border-white/5">
           <label class="flex items-center justify-between cursor-pointer select-none text-[10px] font-bold text-slate-400 bg-black/80 p-2.5 rounded-xl border border-white/5 hover:border-purple-500/30 transition-all">
             <span>BETA UPDATES</span>
             <input type="checkbox" id="beta-update-toggle" class="rounded border-purple-800 text-purple-600 focus:ring-0 bg-black w-3.5 h-3.5 cursor-pointer">
           </label>
 
+          <!-- 絵文字廃止・SVGアイコン化したRECONNECTボタン -->
           <button id="btn-reconnect" class="w-full flex items-center justify-center space-x-2 bg-purple-600/30 hover:bg-purple-600/45 border border-purple-500/50 text-purple-200 rounded-xl py-2.5 text-xs font-black transition-all active:scale-95">
-            <span>🔄</span>
+            <svg class="w-4 h-4 text-purple-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
             <span>RECONNECT</span>
           </button>
         </div>
@@ -87,11 +100,11 @@
       <!-- B. 右メインアナリティクスエリア -->
       <main class="flex-1 flex flex-col p-5 space-y-4 overflow-y-auto min-w-0">
 
-        <!-- 1. メインヘッダー ＆ ドロップゾーン -->
-        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 shrink-0">
+        <!-- 1. メインヘッダー (Live Analytics に変更) ＆ ドロップゾーン -->
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 shrink-0 pt-1">
           <div>
             <h2 class="text-2xl font-black tracking-tight text-white">
-              Vocal <span class="font-light text-purple-300">Analytics</span>
+              Live <span class="font-light text-purple-300">Analytics</span>
             </h2>
           </div>
 
@@ -116,11 +129,11 @@
           </div>
         </div>
 
-        <!-- 2. トップ KPI ステータスカード群 (8カラム 1段完全整列 Aether Liquid Glass) -->
+        <!-- 2. トップ KPI ステータスカード群 (8カラム 1段完全整列 Liquid Glass Sample) -->
         <section class="grid grid-cols-2 md:grid-cols-8 gap-2.5 shrink-0">
           
           <!-- 1: Pitch F0 -->
-          <div class="aether-liquid-glass grid-mesh-bg p-3 flex flex-col justify-between">
+          <div class="liquid-glass-card grid-mesh-bg p-3 flex flex-col justify-between">
             <span class="text-[9px] font-black text-slate-400 uppercase tracking-wider">Pitch (F0)</span>
             <div class="my-0.5">
               <span id="pitch-freq" class="text-lg font-black font-mono text-white tracking-tight truncate block">-- Hz</span>
@@ -129,7 +142,7 @@
           </div>
 
           <!-- 2: Pitch Tuner -->
-          <div class="aether-liquid-glass grid-mesh-bg p-3 flex flex-col justify-between">
+          <div class="liquid-glass-card grid-mesh-bg p-3 flex flex-col justify-between">
             <span class="text-[9px] font-black text-slate-400 uppercase tracking-wider">Pitch Tuner</span>
             <div class="my-0.5">
               <span id="pitch-cents-display" class="text-base font-black font-mono text-emerald-400 tracking-tight truncate block">--</span>
@@ -138,7 +151,7 @@
           </div>
 
           <!-- 3: BPM Meter -->
-          <div class="aether-liquid-glass grid-mesh-bg p-3 flex flex-col justify-between">
+          <div class="liquid-glass-card grid-mesh-bg p-3 flex flex-col justify-between">
             <span class="text-[9px] font-black text-slate-400 uppercase tracking-wider">BPM Tempo</span>
             <div class="my-0.5">
               <span id="bpm-display" class="text-base font-black font-mono text-purple-300 tracking-tight truncate block">-- BPM</span>
@@ -147,7 +160,7 @@
           </div>
 
           <!-- 4: Timbre -->
-          <div class="aether-liquid-glass grid-mesh-bg p-3 flex flex-col justify-between">
+          <div class="liquid-glass-card grid-mesh-bg p-3 flex flex-col justify-between">
             <span class="text-[9px] font-black text-slate-400 uppercase tracking-wider">Timbre</span>
             <div class="my-0.5">
               <span id="timbre-display" class="text-xs font-black font-mono text-purple-200 truncate block">--</span>
@@ -156,7 +169,7 @@
           </div>
 
           <!-- 5: Voice Register -->
-          <div class="aether-liquid-glass grid-mesh-bg p-3 flex flex-col justify-between">
+          <div class="liquid-glass-card grid-mesh-bg p-3 flex flex-col justify-between">
             <span class="text-[9px] font-black text-slate-400 uppercase tracking-wider">Register</span>
             <div class="flex space-x-0.5 my-1">
               <span id="reg-chest" class="reg-indicator flex-1 text-center text-[7px] bg-black/80 border border-white/10 text-slate-600 py-0.5 rounded font-black">CHEST</span>
@@ -167,7 +180,7 @@
           </div>
 
           <!-- 6: Vibrato -->
-          <div class="aether-liquid-glass grid-mesh-bg p-3 flex flex-col justify-between">
+          <div class="liquid-glass-card grid-mesh-bg p-3 flex flex-col justify-between">
             <div class="flex items-center justify-between">
               <span class="text-[9px] font-black text-slate-400 uppercase tracking-wider">Vibrato</span>
               <canvas id="canvas-vibrato-radar" class="w-5 h-5 bg-black rounded border border-white/10 shrink-0" width="20" height="20"></canvas>
@@ -180,7 +193,7 @@
           </div>
 
           <!-- 7: Chord & Key -->
-          <div class="aether-liquid-glass grid-mesh-bg p-3 flex flex-col justify-between">
+          <div class="liquid-glass-card grid-mesh-bg p-3 flex flex-col justify-between">
             <span class="text-[9px] font-black text-slate-400 uppercase tracking-wider">Chord / Key</span>
             <div class="my-0.5">
               <span id="chord-display" class="text-base font-black font-mono text-purple-300 truncate block">--</span>
@@ -189,7 +202,7 @@
           </div>
 
           <!-- 8: Vocal Range -->
-          <div class="aether-liquid-glass grid-mesh-bg p-3 flex flex-col justify-between">
+          <div class="liquid-glass-card grid-mesh-bg p-3 flex flex-col justify-between">
             <div class="flex items-center justify-between">
               <span class="text-[9px] font-black text-slate-400 uppercase tracking-wider">Range</span>
               <div class="flex space-x-0.5">
@@ -207,11 +220,11 @@
 
         </section>
 
-        <!-- 3. ご指示通りの「3段縦並び (- - -)」モニターエリア！ -->
+        <!-- 3. モニター3段縦並び (- - -) エリア -->
         <section class="flex-1 flex flex-col space-y-3 min-h-0">
           
           <!-- 1段目 (-): Companion Perspective (スペクトログラム) -->
-          <div class="flex-1 aether-liquid-glass p-3 flex flex-col min-h-[140px] grid-mesh-bg relative overflow-hidden">
+          <div class="flex-1 liquid-glass-card p-3 flex flex-col min-h-[140px] grid-mesh-bg relative overflow-hidden">
             <div class="flex items-center justify-between z-10 mb-1.5 shrink-0">
               <span class="text-[11px] font-black uppercase tracking-wider text-purple-300 flex items-center">
                 <span class="w-2 h-2 rounded-full bg-purple-500 mr-2 animate-pulse"></span>
@@ -225,7 +238,7 @@
           </div>
 
           <!-- 2段目 (-): Vocal Pitch Tracker (ピッチトラッカー) -->
-          <div class="flex-1 aether-liquid-glass p-3 flex flex-col min-h-[140px] grid-mesh-bg relative overflow-hidden">
+          <div class="flex-1 liquid-glass-card p-3 flex flex-col min-h-[140px] grid-mesh-bg relative overflow-hidden">
             <div class="flex items-center justify-between z-10 mb-1.5 shrink-0">
               <span class="text-[11px] font-black uppercase tracking-wider text-purple-400 flex items-center">
                 <span class="w-2 h-2 rounded-full bg-emerald-400 mr-2 animate-pulse"></span>
@@ -238,8 +251,8 @@
             </div>
           </div>
 
-          <!-- 3段目 (-): Log Hz Spectrum (対数スペクトラム) -->
-          <div class="flex-1 aether-liquid-glass p-3 flex flex-col min-h-[140px] grid-mesh-bg relative overflow-hidden">
+          <!-- 3段目 (-): Log Hz Spectrum (対数スペクトラム: エリア塗りつぶし復元) -->
+          <div class="flex-1 liquid-glass-card p-3 flex flex-col min-h-[140px] grid-mesh-bg relative overflow-hidden">
             <div class="flex items-center justify-between z-10 mb-1.5 shrink-0">
               <span class="text-[11px] font-black uppercase tracking-wider text-slate-300 flex items-center">
                 <span class="w-2 h-2 rounded-full bg-cyan-400 mr-2 animate-pulse"></span>
@@ -262,6 +275,10 @@
           <span id="mid-val"></span><div id="bar-mid"></div>
           <span id="high-val"></span><div id="bar-high"></div>
           <button id="btn-reset-range"></button>
+          <!-- 非表示ボタン互換 -->
+          <button id="btn-close"></button>
+          <button id="btn-minimize"></button>
+          <button id="btn-maximize"></button>
         </div>
 
       </main>

@@ -159,13 +159,16 @@ async function startAudioStream() {
       await audioCtx.resume();
     }
 
-    // マイクまたは入力音声の取得
+    // 第1優先: PCデスクトップ/システム音声 (getDisplayMedia)
     try {
-      currentStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+      currentStream = await navigator.mediaDevices.getDisplayMedia({ audio: true, video: true });
+      currentStream.getVideoTracks().forEach(t => t.stop());
+      console.log('PCシステム音声ストリームのキャプチャに成功しました。');
     } catch (e1) {
+      console.warn('getDisplayMedia (PC音声) 失敗。マイク入力へフォールバックします:', e1);
       try {
-        currentStream = await navigator.mediaDevices.getDisplayMedia({ audio: true, video: true });
-        currentStream.getVideoTracks().forEach(t => t.stop());
+        currentStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+        console.log('マイク音声ストリームの取得に成功しました。');
       } catch (e2) {
         console.warn('Audio capture warning:', e2);
       }
@@ -531,7 +534,7 @@ function drawSpectrum() {
     ctxSpectrum.fillText(label, x, h - 5);
   });
 
-  // リアルタイムスペクトラム波形描画
+  // リアルタイムスペクトラム波形描画 (グラデーションエリア塗りつぶし復元)
   if (spectrumAnalyser && audioCtx && audioCtx.state === 'running') {
     const data = new Uint8Array(spectrumAnalyser.frequencyBinCount);
     spectrumAnalyser.getByteFrequencyData(data);
@@ -540,19 +543,38 @@ function drawSpectrum() {
     const sampleRate = audioCtx.sampleRate;
 
     ctxSpectrum.beginPath();
-    ctxSpectrum.strokeStyle = '#38bdf8';
-    ctxSpectrum.lineWidth = 1.5;
+    ctxSpectrum.moveTo(0, h);
 
+    const points = [];
     for (let x = 0; x < w; x++) {
       const normX = x / w;
       const freq = 30 * Math.pow(20000 / 30, normX);
       const binIdx = Math.round((freq * totalBins * 2) / sampleRate);
       const val = binIdx < data.length ? data[binIdx] : 0;
-      const y = h - (val / 255) * (h - 20) - 15;
-
-      if (x === 0) ctxSpectrum.moveTo(x, y);
-      else ctxSpectrum.lineTo(x, y);
+      const y = h - (val / 255) * (h - 25) - 10;
+      points.push({ x, y });
+      ctxSpectrum.lineTo(x, y);
     }
+
+    ctxSpectrum.lineTo(w, h);
+    ctxSpectrum.closePath();
+
+    // 縦グラデーション塗りの充填
+    const grad = ctxSpectrum.createLinearGradient(0, 0, 0, h);
+    grad.addColorStop(0, 'rgba(168, 85, 247, 0.6)');
+    grad.addColorStop(0.5, 'rgba(56, 189, 248, 0.3)');
+    grad.addColorStop(1, 'rgba(2, 3, 6, 0.0)');
+    ctxSpectrum.fillStyle = grad;
+    ctxSpectrum.fill();
+
+    // 上部頂点のアウトラインネオン線
+    ctxSpectrum.beginPath();
+    points.forEach((p, idx) => {
+      if (idx === 0) ctxSpectrum.moveTo(p.x, p.y);
+      else ctxSpectrum.lineTo(p.x, p.y);
+    });
+    ctxSpectrum.strokeStyle = '#c084fc';
+    ctxSpectrum.lineWidth = 1.5;
     ctxSpectrum.stroke();
   }
 }
