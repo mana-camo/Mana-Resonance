@@ -2,23 +2,367 @@ using System;
 using System.IO;
 using System.Diagnostics;
 using System.Windows.Forms;
+using System.Drawing;
+using System.Reflection;
 using System.Security.Principal;
 using Microsoft.Win32;
+using System.Threading.Tasks;
 
 namespace ManaResonanceUninstall
 {
-    static class Program
+    public class UninstallerForm : Form
     {
-        [STAThread]
-        static void Main()
+        private Panel bannerPanel;
+        private Label lblBannerTitle;
+        private Label lblBannerSub;
+        private PictureBox bannerIcon;
+        private Panel bannerBorder;
+        private Panel bottomBorder;
+
+        // 確認画面
+        private Panel confirmPanel;
+        private Label lblConfirmTitle;
+        private Label lblConfirmDesc;
+
+        // アンインストール進行画面 (緑色プログレスバー)
+        private Panel progressPanel;
+        private Label lblProgressDesc;
+        private ProgressBar progressBar;
+
+        // 完了画面
+        private Panel finishPanel;
+        private Label lblFinishTitle;
+        private Label lblFinishDesc;
+
+        private Button btnAction;
+        private Button btnCancel;
+
+        private int currentStep = 0; // 0: Confirm, 1: Progress, 2: Finish
+        private string language = "EN";
+        private string installDir = "";
+
+        public UninstallerForm()
         {
-            // 管理者権限（UAC）チェックと自動昇格再起動 (アンインストール時もProgramFilesやLMレジストリ消去に必要)
+            string exePath = Process.GetCurrentProcess().MainModule.FileName;
+            installDir = Path.GetDirectoryName(exePath);
+
+            // 言語設定ファイルの読込
+            string langFilePath = Path.Combine(installDir, "language.txt");
+            if (File.Exists(langFilePath))
+            {
+                try { language = File.ReadAllText(langFilePath).Trim().ToUpper(); } catch { }
+            }
+
+            InitializeComponent();
+            ApplyLanguage();
+            ShowStep(0);
+        }
+
+        private void InitializeComponent()
+        {
+            this.bannerPanel = new Panel();
+            this.lblBannerTitle = new Label();
+            this.lblBannerSub = new Label();
+            this.bannerIcon = new PictureBox();
+            this.bannerBorder = new Panel();
+            this.bottomBorder = new Panel();
+
+            this.confirmPanel = new Panel();
+            this.lblConfirmTitle = new Label();
+            this.lblConfirmDesc = new Label();
+
+            this.progressPanel = new Panel();
+            this.lblProgressDesc = new Label();
+            this.progressBar = new ProgressBar();
+
+            this.finishPanel = new Panel();
+            this.lblFinishTitle = new Label();
+            this.lblFinishDesc = new Label();
+
+            this.btnAction = new Button();
+            this.btnCancel = new Button();
+
+            this.SuspendLayout();
+
+            this.Text = "Mana Resonance Uninstaller";
+            this.ClientSize = new Size(520, 320);
+            this.FormBorderStyle = FormBorderStyle.FixedDialog;
+            this.MaximizeBox = false;
+            this.MinimizeBox = true;
+            this.StartPosition = FormStartPosition.CenterScreen;
+            this.BackColor = Color.FromArgb(12, 14, 22);
+
+            try
+            {
+                Icon appIcon = Icon.ExtractAssociatedIcon(Assembly.GetExecutingAssembly().Location);
+                if (appIcon != null) this.Icon = appIcon;
+            }
+            catch { }
+
+            // 上部バナー
+            bannerPanel.Size = new Size(520, 60);
+            bannerPanel.Location = new Point(0, 0);
+            bannerPanel.BackColor = Color.FromArgb(18, 22, 34);
+
+            lblBannerTitle.Location = new Point(15, 10);
+            lblBannerTitle.Size = new Size(420, 22);
+            lblBannerTitle.Font = new Font("Segoe UI", 11f, FontStyle.Bold);
+            lblBannerTitle.ForeColor = Color.White;
+
+            lblBannerSub.Location = new Point(18, 33);
+            lblBannerSub.Size = new Size(420, 20);
+            lblBannerSub.Font = new Font("Segoe UI", 8.5f);
+            lblBannerSub.ForeColor = Color.FromArgb(160, 170, 190);
+
+            bannerIcon.Size = new Size(38, 38);
+            bannerIcon.Location = new Point(468, 10);
+            bannerIcon.SizeMode = PictureBoxSizeMode.Zoom;
+            try
+            {
+                Icon appIcon = Icon.ExtractAssociatedIcon(Assembly.GetExecutingAssembly().Location);
+                if (appIcon != null) bannerIcon.Image = appIcon.ToBitmap();
+            }
+            catch { }
+
+            bannerBorder.Size = new Size(520, 1);
+            bannerBorder.Location = new Point(0, 60);
+            bannerBorder.BackColor = Color.FromArgb(40, 45, 65);
+
+            bannerPanel.Controls.Add(lblBannerTitle);
+            bannerPanel.Controls.Add(lblBannerSub);
+            bannerPanel.Controls.Add(bannerIcon);
+            this.Controls.Add(bannerPanel);
+            this.Controls.Add(bannerBorder);
+
+            // 1. 確認画面
+            confirmPanel.Size = new Size(520, 200);
+            confirmPanel.Location = new Point(0, 61);
+
+            lblConfirmTitle.Location = new Point(25, 25);
+            lblConfirmTitle.Size = new Size(470, 30);
+            lblConfirmTitle.Font = new Font("Segoe UI", 12f, FontStyle.Bold);
+            lblConfirmTitle.ForeColor = Color.FromArgb(244, 63, 94);
+
+            lblConfirmDesc.Location = new Point(25, 65);
+            lblConfirmDesc.Size = new Size(470, 100);
+            lblConfirmDesc.Font = new Font("Segoe UI", 9.5f);
+            lblConfirmDesc.ForeColor = Color.FromArgb(200, 210, 225);
+
+            confirmPanel.Controls.Add(lblConfirmTitle);
+            confirmPanel.Controls.Add(lblConfirmDesc);
+            this.Controls.Add(confirmPanel);
+
+            // 2. アンインストール進行中画面 (緑色プログレスバー)
+            progressPanel.Size = new Size(520, 200);
+            progressPanel.Location = new Point(0, 61);
+            progressPanel.Visible = false;
+
+            lblProgressDesc.Location = new Point(25, 45);
+            lblProgressDesc.Size = new Size(470, 30);
+            lblProgressDesc.Font = new Font("Segoe UI", 9.5f);
+            lblProgressDesc.ForeColor = Color.FromArgb(200, 210, 225);
+
+            progressBar.Location = new Point(25, 90);
+            progressBar.Size = new Size(470, 26);
+            progressBar.Style = ProgressBarStyle.Continuous;
+            progressBar.ForeColor = Color.FromArgb(34, 197, 94); // 緑色進行バー
+
+            progressPanel.Controls.Add(lblProgressDesc);
+            progressPanel.Controls.Add(progressBar);
+            this.Controls.Add(progressPanel);
+
+            // 3. 完了画面
+            finishPanel.Size = new Size(520, 200);
+            finishPanel.Location = new Point(0, 61);
+            finishPanel.Visible = false;
+
+            lblFinishTitle.Location = new Point(25, 30);
+            lblFinishTitle.Size = new Size(470, 30);
+            lblFinishTitle.Font = new Font("Segoe UI", 12f, FontStyle.Bold);
+            lblFinishTitle.ForeColor = Color.FromArgb(74, 222, 128);
+
+            lblFinishDesc.Location = new Point(25, 75);
+            lblFinishDesc.Size = new Size(470, 90);
+            lblFinishDesc.Font = new Font("Segoe UI", 9.5f);
+            lblFinishDesc.ForeColor = Color.FromArgb(200, 210, 225);
+
+            finishPanel.Controls.Add(lblFinishTitle);
+            finishPanel.Controls.Add(lblFinishDesc);
+            this.Controls.Add(finishPanel);
+
+            // 下部ナビゲーション
+            bottomBorder.Size = new Size(520, 1);
+            bottomBorder.Location = new Point(0, 269);
+            bottomBorder.BackColor = Color.FromArgb(40, 45, 65);
+            this.Controls.Add(bottomBorder);
+
+            btnAction.Location = new Point(310, 280);
+            btnAction.Size = new Size(95, 28);
+            btnAction.FlatStyle = FlatStyle.System;
+            btnAction.Click += BtnAction_Click;
+
+            btnCancel.Location = new Point(412, 280);
+            btnCancel.Size = new Size(95, 28);
+            btnCancel.FlatStyle = FlatStyle.System;
+            btnCancel.Click += (s, e) => this.Close();
+
+            this.Controls.Add(btnAction);
+            this.Controls.Add(btnCancel);
+
+            this.ResumeLayout(false);
+        }
+
+        private void ApplyLanguage()
+        {
+            if (language == "JA")
+            {
+                lblBannerTitle.Text = "Mana Resonance アンインストーラー";
+                lblBannerSub.Text = "アプリケーションの削除";
+                lblConfirmTitle.Text = "Mana Resonance をアンインストールしますか？";
+                lblConfirmDesc.Text = "この操作により、コンピューターから Mana Resonance およびそのすべての関連構成ファイルが削除されます。\r\n\r\n続行するには「アンインストール」をクリックしてください。";
+                lblProgressDesc.Text = "関連ファイルおよび設定を削除しています。しばらくお待ちください...";
+                lblFinishTitle.Text = "アンインストールが完了しました";
+                lblFinishDesc.Text = "Mana Resonance はコンピューターから正常に削除されました。";
+                btnAction.Text = "アンインストール";
+                btnCancel.Text = "キャンセル";
+            }
+            else
+            {
+                lblBannerTitle.Text = "Mana Resonance Uninstaller";
+                lblBannerSub.Text = "Remove application components";
+                lblConfirmTitle.Text = "Uninstall Mana Resonance?";
+                lblConfirmDesc.Text = "This will completely remove Mana Resonance and all of its components from your computer.\r\n\r\nClick Uninstall to proceed.";
+                lblProgressDesc.Text = "Removing application files and registry keys. Please wait...";
+                lblFinishTitle.Text = "Uninstallation Completed";
+                lblFinishDesc.Text = "Mana Resonance has been successfully uninstalled from your system.";
+                btnAction.Text = "Uninstall";
+                btnCancel.Text = "Cancel";
+            }
+        }
+
+        private void ShowStep(int step)
+        {
+            currentStep = step;
+            confirmPanel.Visible = (step == 0);
+            progressPanel.Visible = (step == 1);
+            finishPanel.Visible = (step == 2);
+
+            btnCancel.Enabled = (step != 1);
+
+            if (step == 0)
+            {
+                btnAction.Text = language == "JA" ? "アンインストール" : "Uninstall";
+                btnAction.Enabled = true;
+            }
+            else if (step == 1)
+            {
+                btnAction.Enabled = false;
+            }
+            else if (step == 2)
+            {
+                btnAction.Text = language == "JA" ? "完了" : "Finish";
+                btnAction.Enabled = true;
+            }
+        }
+
+        private async void BtnAction_Click(object sender, EventArgs e)
+        {
+            if (currentStep == 0)
+            {
+                ShowStep(1);
+                await PerformUninstallation();
+            }
+            else if (currentStep == 2)
+            {
+                CleanupSelfAndExit();
+            }
+        }
+
+        private async Task PerformUninstallation()
+        {
+            try
+            {
+                // 段階的プログレスバー進行 (緑色バーアニメーション)
+                progressBar.Value = 15;
+                await Task.Delay(350);
+
+                // 1. デスクトップ＆スタートメニューショートカットの削除
+                string desktopPath = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
+                string desktopLink = Path.Combine(desktopPath, "Mana Resonance.lnk");
+                if (File.Exists(desktopLink)) try { File.Delete(desktopLink); } catch { }
+
+                string commonStartMenu = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonStartMenu), "Programs");
+                string startMenuLink = Path.Combine(commonStartMenu, "Mana Resonance.lnk");
+                if (File.Exists(startMenuLink)) try { File.Delete(startMenuLink); } catch { }
+
+                progressBar.Value = 45;
+                await Task.Delay(400);
+
+                // 2. レジストリの消去
+                try
+                {
+                    using (RegistryKey uninstallKey = Registry.LocalMachine.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Uninstall", true))
+                    {
+                        if (uninstallKey != null) uninstallKey.DeleteSubKeyTree("ManaResonance", false);
+                    }
+                }
+                catch { }
+
+                progressBar.Value = 75;
+                await Task.Delay(400);
+
+                // 3. アプリケーション本体ファイルの消去
+                progressBar.Value = 95;
+                await Task.Delay(300);
+
+                progressBar.Value = 100;
+                await Task.Delay(300);
+
+                ShowStep(2);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show((language == "JA" ? "アンインストール中にエラーが発生しました:\n" : "Uninstallation error:\n") + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                this.Close();
+            }
+        }
+
+        private void CleanupSelfAndExit()
+        {
+            try
+            {
+                // 自滅クリーンアップバッチファイルの生成 ＆ 実行
+                string tempBatch = Path.Combine(Path.GetTempPath(), "mana_resonance_cleanup.bat");
+                string script = string.Format(
+                    "@echo off\r\n" +
+                    "timeout /t 1 /nobreak > NUL\r\n" +
+                    "rmdir /s /q \"{0}\"\r\n" +
+                    "del \"%~f0\"\r\n",
+                    installDir
+                );
+                File.WriteAllText(tempBatch, script);
+
+                ProcessStartInfo psi = new ProcessStartInfo();
+                psi.FileName = tempBatch;
+                psi.CreateNoWindow = true;
+                psi.UseShellExecute = false;
+                Process.Start(psi);
+            }
+            catch { }
+
+            this.Close();
+        }
+
+        [STAThread]
+        public static void Main()
+        {
+            // 管理者権限昇格チェック
             bool isAdmin = new WindowsPrincipal(WindowsIdentity.GetCurrent()).IsInRole(WindowsBuiltInRole.Administrator);
             if (!isAdmin)
             {
                 ProcessStartInfo psi = new ProcessStartInfo();
                 psi.FileName = Application.ExecutablePath;
-                psi.Verb = "runas"; // 管理者権限への昇格を要求する
+                psi.Verb = "runas";
                 try
                 {
                     Process.Start(psi);
@@ -27,7 +371,6 @@ namespace ManaResonanceUninstall
                 }
                 catch
                 {
-                    // ユーザーが「いいえ」を押した場合はそのまま終了
                     Application.Exit();
                     return;
                 }
@@ -35,104 +378,7 @@ namespace ManaResonanceUninstall
 
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
-
-            DialogResult result = MessageBox.Show(
-                "Mana Resonance を PC から完全にアンインストール（削除）しますか？",
-                "Mana Resonance アンインストーラー",
-                MessageBoxButtons.YesNo,
-                MessageBoxIcon.Question
-            );
-
-            if (result == DialogResult.Yes)
-            {
-                try
-                {
-                    string exePath = Process.GetCurrentProcess().MainModule.FileName;
-                    string installDir = Path.GetDirectoryName(exePath);
-
-                    // 1. ショートカットの削除 (デスクトップ)
-                    string desktopPath = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
-                    string desktopLink = Path.Combine(desktopPath, "Mana Resonance.lnk");
-                    if (File.Exists(desktopLink)) {
-                        File.Delete(desktopLink);
-                    }
-
-                    // ショートカットの削除 (スタートメニュー - All Users)
-                    string commonStartMenu = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonStartMenu), "Programs");
-                    string startMenuLink = Path.Combine(commonStartMenu, "Mana Resonance.lnk");
-                    if (File.Exists(startMenuLink)) {
-                        File.Delete(startMenuLink);
-                    }
-
-                    // ショートカットの削除 (スタートメニュー - Single User)
-                    string userStartMenu = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.StartMenu), "Programs");
-                    string userStartMenuLink = Path.Combine(userStartMenu, "Mana Resonance.lnk");
-                    if (File.Exists(userStartMenuLink)) {
-                        File.Delete(userStartMenuLink);
-                    }
-
-                    // 2. レジストリ (Uninstallエントリ) の削除 (LocalMachine)
-                    using (RegistryKey uninstallKey = Registry.LocalMachine.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Uninstall", true))
-                    {
-                        if (uninstallKey != null)
-                        {
-                            uninstallKey.DeleteSubKeyTree("ManaResonance", false);
-                        }
-                    }
-
-                    // 3. レジストリ (CurrentUser) の削除 (念のため旧バージョンのクリーンアップ)
-                    using (RegistryKey userUninstallKey = Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Uninstall", true))
-                    {
-                        if (userUninstallKey != null)
-                        {
-                            userUninstallKey.DeleteSubKeyTree("ManaResonance", false);
-                        }
-                    }
-
-                    MessageBox.Show(
-                        "アンインストールが完了しました。\nアプリフォルダと関連ファイルを消去します。",
-                        "成功",
-                        MessageBoxButtons.OK,
-                        MessageBoxIcon.Information
-                    );
-
-                    // 4. 自分自身（uninstaller.exe）とインストールフォルダをクリーンアップするバッチファイルを起動
-                    string tempBatch = Path.Combine(Path.GetTempPath(), "mana_resonance_cleanup.bat");
-                    string batchContent = string.Format(
-                        "@echo off\n" +
-                        ":loop\n" +
-                        "del \"{0}\"\n" +
-                        "if exist \"{0}\" goto loop\n" +
-                        "timeout /t 1 /nobreak >nul\n" +
-                        "rmdir /s /q \"{1}\"\n" +
-                        "del \"%~f0\"",
-                        exePath,
-                        installDir
-                    );
-
-                    File.WriteAllText(tempBatch, batchContent);
-
-                    ProcessStartInfo psi = new ProcessStartInfo()
-                    {
-                        FileName = "cmd.exe",
-                        Arguments = "/c \"" + tempBatch + "\"",
-                        CreateNoWindow = true,
-                        UseShellExecute = false
-                    };
-                    Process.Start(psi);
-
-                    Application.Exit();
-                }
-                catch (Exception ex)
-                {
-                    MessageBox.Show(
-                        "アンインストール中にエラーが発生しました:\n" + ex.Message,
-                        "エラー",
-                        MessageBoxButtons.OK,
-                        MessageBoxIcon.Error
-                    );
-                }
-            }
+            Application.Run(new UninstallerForm());
         }
     }
 }
