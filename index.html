@@ -52,12 +52,6 @@
           <span>RECONNECT</span>
         </button>
 
-        <!-- 高音質WAV録音ボタン (新機能) -->
-        <button id="btn-rec-wav" class="flex items-center space-x-1.5 bg-rose-600/20 hover:bg-rose-600/30 border border-rose-500/40 text-rose-300 rounded-xl px-3.5 py-2 text-xs font-bold transition-all shadow-sm">
-          <span>🔴</span>
-          <span>REC WAV</span>
-        </button>
-
         <!-- オーディオ再生/一時停止コントロール (ファイル用) -->
         <div id="file-player-controls" class="hidden flex items-center space-x-4 bg-slate-950/90 px-4 py-2 rounded-xl border border-white/10 flex-1 min-w-[300px]">
           <span id="file-name" class="text-xs font-semibold text-purple-300 max-w-[120px] truncate">No File</span>
@@ -163,7 +157,7 @@
         <section class="lg:col-span-2 flex flex-col bg-slate-900/60 backdrop-blur-md rounded-2xl border border-white/5 p-5 space-y-4 overflow-hidden">
           
           <!-- 上部: 歌唱・ビートボックス解析ステータス -->
-          <div class="grid grid-cols-2 md:grid-cols-7 gap-3 bg-slate-950/60 p-4 rounded-xl border border-white/5 shrink-0">
+          <div class="grid grid-cols-2 md:grid-cols-8 gap-3 bg-slate-950/60 p-4 rounded-xl border border-white/5 shrink-0">
             <!-- 1. 検出ピッチ -->
             <div class="flex flex-col">
               <span class="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">Pitch (F0)</span>

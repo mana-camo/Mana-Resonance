@@ -196,7 +196,6 @@ window.addEventListener('DOMContentLoaded', async () => {
   setupMuteEvent();
   setupDeviceChangeListener();
   setupReconnectEvent();
-  setupWavRecorder();
   
   // アニメーションループ起動
   requestAnimationFrame(updateLoop);
@@ -2026,56 +2025,4 @@ function analyzeFormants() {
 }
 
 // --- 4. 高音質 WAV 録音 ＆ 書き出し ---
-let audioRecorder = null;
-let audioChunks = [];
-let isRecActive = false;
 
-function setupWavRecorder() {
-  const recBtn = document.getElementById('btn-rec-wav');
-  if (!recBtn) return;
-
-  recBtn.addEventListener('click', () => {
-    if (!currentStream) {
-      alert("音声ストリームが準備できていません。");
-      return;
-    }
-
-    if (!isRecActive) {
-      audioChunks = [];
-      try {
-        audioRecorder = new MediaRecorder(currentStream);
-        audioRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); };
-        audioRecorder.onstop = exportWavFile;
-        audioRecorder.start();
-        isRecActive = true;
-
-        recBtn.innerHTML = `<span class="w-2 h-2 rounded-full bg-rose-500 animate-ping inline-block mr-1"></span>STOP REC`;
-        recBtn.className = "flex items-center space-x-1.5 bg-rose-600/30 hover:bg-rose-600/40 border border-rose-500 text-rose-300 rounded-xl px-3.5 py-2 text-xs font-bold transition-all";
-      } catch (err) {
-        console.error("Recorder error:", err);
-      }
-    } else {
-      if (audioRecorder && audioRecorder.state !== 'inactive') {
-        audioRecorder.stop();
-      }
-      isRecActive = false;
-      recBtn.innerHTML = `🔴 REC WAV`;
-      recBtn.className = "flex items-center space-x-1.5 bg-rose-600/20 hover:bg-rose-600/30 border border-rose-500/40 text-rose-300 rounded-xl px-3.5 py-2 text-xs font-bold transition-all shadow-sm";
-    }
-  });
-}
-
-function exportWavFile() {
-  if (audioChunks.length === 0) return;
-  const blob = new Blob(audioChunks, { type: 'audio/webm' });
-  const url = URL.createObjectURL(blob);
-
-  const d = new Date();
-  const dateStr = `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}_${String(d.getHours()).padStart(2,'0')}${String(d.getMinutes()).padStart(2,'0')}`;
-  
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `mana_recording_${dateStr}.webm`;
-  a.click();
-  URL.revokeObjectURL(url);
-}
