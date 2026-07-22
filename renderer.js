@@ -1,13 +1,10 @@
 // ==========================================================================
-// Mana Resonance - Clean & Robust Audio Engine (完全新規リライト版)
-// - 対数スペクトラム: ベジェ曲線(Smooth Curve)マルチカラーグラデーション
-// - ピッチトラッカー: 右から左へぬるぬる流れる緑色発光リボン
-// - 100%常時描画ループ & PCシステム音声優先接続
+// Mana Resonance - Pure Zero-Based Audio Engine (ゼロからの完全新規再設計)
 // ==========================================================================
 
 const { ipcRenderer } = require('electron');
 
-// DOM参照
+// --- DOM Elements ---
 const canvasSpectrogram = document.getElementById('canvas-spectrogram');
 const canvasPitchTracker = document.getElementById('canvas-pitch-tracker');
 const canvasSpectrum = document.getElementById('canvas-spectrum');
@@ -18,13 +15,13 @@ const dropZone = document.getElementById('drop-zone');
 const btnReconnect = document.getElementById('btn-reconnect');
 const filterPresets = document.getElementById('filter-presets');
 
-// 2Dコンテキスト
+// --- 2D Contexts ---
 let ctxSpectrogram = null;
 let ctxPitchTracker = null;
 let ctxSpectrum = null;
 let ctxVibrato = null;
 
-// 音響解析ノード
+// --- Audio System ---
 let audioCtx = null;
 let currentStream = null;
 let sourceNode = null;
@@ -32,22 +29,25 @@ let pitchAnalyser = null;
 let spectrumAnalyser = null;
 let lowAnalyser = null;
 
-// 音声解析データ
+// --- Pitch State ---
 let lastValidF0 = 0;
-const MAX_PITCH_HISTORY = 250;
-let pitchHistory = new Array(MAX_PITCH_HISTORY).fill(0);
+let lastConfidence = 0;
 
-// スペクトログラム用スクロールバッファ
+// --- Buffers & History ---
+const PITCH_HISTORY_SIZE = 300;
+// Array of { f0, conf }
+let pitchRingBuffer = new Array(PITCH_HISTORY_SIZE).fill(null).map(() => ({ f0: 0, conf: 0 }));
+
 let spectroBufferCanvas = null;
 let spectroBufferCtx = null;
 
-// フレーム/FPS
+// --- Rendering Loop State ---
 let frameCount = 0;
 let lastFpsTimestamp = performance.now();
 
-// --------------------------------------------------------------------------
-// 1. 初期化 ＆ サイズ同期
-// --------------------------------------------------------------------------
+// ==========================================================================
+// 1. App Initialization & Resize Observer
+// ==========================================================================
 document.addEventListener('DOMContentLoaded', async () => {
   if (canvasSpectrogram) ctxSpectrogram = canvasSpectrogram.getContext('2d');
   if (canvasPitchTracker) ctxPitchTracker = canvasPitchTracker.getContext('2d');
@@ -55,22 +55,21 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (canvasVibratoRadar) ctxVibrato = canvasVibratoRadar.getContext('2d');
 
   setupResizeObservers();
-  setupEvents();
+  setupUIEvents();
 
-  // PCシステム音声優先キャプチャ
-  await startAudioStream();
+  // PCシステム音声優先接続
+  await initAudioStream();
 
-  // 100%常時描画ループ起動
-  requestAnimationFrame(renderLoop);
+  // 100%常時メイン描画ループ
+  requestAnimationFrame(mainRenderLoop);
 });
 
 function setupResizeObservers() {
-  const resizeCanvas = (canvas) => {
+  const syncSize = (canvas) => {
     if (!canvas || !canvas.parentElement) return;
     const rect = canvas.parentElement.getBoundingClientRect();
-    const w = Math.max(20, Math.floor(rect.width));
-    const h = Math.max(20, Math.floor(rect.height));
-
+    const w = Math.max(10, Math.floor(rect.width));
+    const h = Math.max(10, Math.floor(rect.height));
     if (canvas.width !== w || canvas.height !== h) {
       canvas.width = w;
       canvas.height = h;
@@ -78,63 +77,21 @@ function setupResizeObservers() {
   };
 
   const observer = new ResizeObserver(() => {
-    resizeCanvas(canvasSpectrogram);
-    resizeCanvas(canvasPitchTracker);
-    resizeCanvas(canvasSpectrum);
-    resizeCanvas(canvasVibratoRadar);
+    syncSize(canvasSpectrogram);
+    syncSize(canvasPitchTracker);
+    syncSize(canvasSpectrum);
+    syncSize(canvasVibratoRadar);
   });
 
-  if (canvasSpectrogram && canvasSpectrogram.parentElement) observer.observe(canvasSpectrogram.parentElement);
-  if (canvasPitchTracker && canvasPitchTracker.parentElement) observer.observe(canvasPitchTracker.parentElement);
-  if (canvasSpectrum && canvasSpectrum.parentElement) observer.observe(canvasSpectrum.parentElement);
+  if (canvasSpectrogram?.parentElement) observer.observe(canvasSpectrogram.parentElement);
+  if (canvasPitchTracker?.parentElement) observer.observe(canvasPitchTracker.parentElement);
+  if (canvasSpectrum?.parentElement) observer.observe(canvasSpectrum.parentElement);
 }
 
-// --------------------------------------------------------------------------
-// 2. 毎フレーム描画 ＆ 音声解析ループ (100%常時稼働)
-// --------------------------------------------------------------------------
-let lastRenderTimestamp = 0;
-let pitchAnalyzeAccumulator = 0; // 自己相関の間引き用タイマー
-const PITCH_ANALYZE_INTERVAL = 33; // 約30fpsレートで解析 (ms)
-
-function renderLoop(timestamp) {
-  requestAnimationFrame(renderLoop);
-
-  const frameDelta = timestamp - (lastRenderTimestamp || timestamp);
-  lastRenderTimestamp = timestamp;
-
-  // FPS計算
-  frameCount++;
-  const delta = timestamp - lastFpsTimestamp;
-  if (delta >= 1000) {
-    if (fpsCounter) fpsCounter.textContent = `${Math.round((frameCount * 1000) / delta)} FPS`;
-    frameCount = 0;
-    lastFpsTimestamp = timestamp;
-  }
-
-  // 音声解析 (毎フレームリアルタイム高精細解析)
-  if (audioCtx && audioCtx.state === 'running') {
-    analyzePitch();
-    analyzePitchAccuracy(lastValidF0);
-    analyzeBPM();
-    analyzeFormants();
-    analyzeChord();
-  } else {
-    lastValidF0 = 0;
-    lastPitchConfidence = 0;
-  }
-
-  // 描画処理 (audioCtx に関わらず 100% 常時描画)
-  // frameDelta を渡してFPS非依存スクロールを実現
-  drawSpectrogram();
-  drawPitchTracker(frameDelta);
-  drawSpectrum();
-  drawVibratoRadar();
-}
-
-// --------------------------------------------------------------------------
-// 3. 音声ストリームの接続 (PCシステム音声最優先)
-// --------------------------------------------------------------------------
-async function startAudioStream() {
+// ==========================================================================
+// 2. Audio Stream Setup (PC System Audio First, Microphone Fallback)
+// ==========================================================================
+async function initAudioStream() {
   try {
     if (!audioCtx) {
       audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -143,18 +100,18 @@ async function startAudioStream() {
       await audioCtx.resume();
     }
 
-    // 第1優先: PCシステム音声キャプチャ
     try {
+      // 1. PCシステム音声優先
       currentStream = await navigator.mediaDevices.getDisplayMedia({ audio: true, video: true });
       currentStream.getVideoTracks().forEach(t => t.stop());
-      console.log('PCシステム音声ストリームの取得に成功しました。');
-    } catch (e1) {
-      console.warn('getDisplayMedia 失敗。マイク入力へフォールバック:', e1);
+      console.log('Audio Source: PC System Audio Connected');
+    } catch (errDisplay) {
+      // 2. マイクフォールバック
       try {
         currentStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-        console.log('マイク音声ストリームの取得に成功しました。');
-      } catch (e2) {
-        console.warn('Audio capture warning:', e2);
+        console.log('Audio Source: Microphone Connected');
+      } catch (errUser) {
+        console.warn('Audio capture permission denied or failed:', errUser);
       }
     }
 
@@ -166,7 +123,7 @@ async function startAudioStream() {
       pitchAnalyser.fftSize = 2048;
 
       spectrumAnalyser = audioCtx.createAnalyser();
-      spectrumAnalyser.fftSize = 4096; // 4096ビンで低音域の解像度を極限まで高精細化
+      spectrumAnalyser.fftSize = 4096; // 低音域高分解能化
 
       lowAnalyser = audioCtx.createAnalyser();
       lowAnalyser.fftSize = 512;
@@ -176,66 +133,107 @@ async function startAudioStream() {
       sourceNode.connect(lowAnalyser);
     }
   } catch (err) {
-    console.error('Audio Stream Setup Error:', err);
+    console.error('Audio Stream Initialization Error:', err);
   }
 }
 
-let lastPitchConfidence = 0;
+// ==========================================================================
+// 3. Main Animation & Analysis Loop (100% Constant 60/160 FPS)
+// ==========================================================================
+function mainRenderLoop(timestamp) {
+  requestAnimationFrame(mainRenderLoop);
 
-function analyzePitch() {
+  // FPS Counter
+  frameCount++;
+  const delta = timestamp - lastFpsTimestamp;
+  if (delta >= 1000) {
+    if (fpsCounter) fpsCounter.textContent = `${Math.round((frameCount * 1000) / delta)} FPS`;
+    frameCount = 0;
+    lastFpsTimestamp = timestamp;
+  }
+
+  // Audio Processing (when running)
+  if (audioCtx && audioCtx.state === 'running') {
+    processPitchAnalysis();
+    processPitchAccuracy(lastValidF0);
+    processBPM();
+    processFormants();
+    processChord();
+  } else {
+    lastValidF0 = 0;
+    lastConfidence = 0;
+  }
+
+  // Update Pitch Ring Buffer (Shift Left, Push New)
+  pitchRingBuffer.shift();
+  pitchRingBuffer.push({ f0: lastValidF0, conf: lastConfidence });
+
+  // Render All Canvas Views (Always active)
+  renderSpectrogramView();
+  renderPitchTrackerView();
+  renderSpectrumView();
+  renderVibratoRadarView();
+}
+
+// ==========================================================================
+// 4. Ultra-Precise Pitch Detection (NSDF Auto-Correlation)
+// ==========================================================================
+function processPitchAnalysis() {
   if (!pitchAnalyser) return;
 
   const buffer = new Float32Array(pitchAnalyser.fftSize);
   pitchAnalyser.getFloatTimeDomainData(buffer);
 
-  // RMS (音圧) 計算
-  let sum = 0;
-  for (let i = 0; i < buffer.length; i++) sum += buffer[i] * buffer[i];
-  const rms = Math.sqrt(sum / buffer.length);
+  // 1. RMS Energy
+  let sumSq = 0;
+  for (let i = 0; i < buffer.length; i++) sumSq += buffer[i] * buffer[i];
+  const rms = Math.sqrt(sumSq / buffer.length);
 
-  if (rms < 0.0006) {
+  if (rms < 0.0005) {
     lastValidF0 = 0;
-    lastPitchConfidence = 0;
+    lastConfidence = 0;
     updatePitchUI(0, '--');
     return;
   }
 
-  // 信号の正規化
-  const normalized = new Float32Array(buffer.length);
-  const scale = rms > 0 ? 1.0 / (rms * 6) : 1.0;
+  // 2. Normalize Signal (Gain Auto-compensation for low PC Audio)
+  const normBuffer = new Float32Array(buffer.length);
+  const gainScale = 1.0 / (rms * 6);
   for (let i = 0; i < buffer.length; i++) {
-    normalized[i] = Math.max(-1, Math.min(1, buffer[i] * scale));
+    normBuffer[i] = Math.max(-1, Math.min(1, buffer[i] * gainScale));
   }
 
   const sampleRate = audioCtx.sampleRate;
-  const minPeriod = Math.floor(sampleRate / 1200);
-  const maxPeriod = Math.floor(sampleRate / 45);
+  const minPeriod = Math.floor(sampleRate / 1200); // Max 1200Hz
+  const maxPeriod = Math.floor(sampleRate / 45);   // Min 45Hz
 
-  let bestCorr = -1;
+  // 3. NSDF Normalized Correlation Search
+  let maxNsdf = -1;
   let bestPeriod = -1;
 
-  for (let period = minPeriod; period <= maxPeriod; period++) {
-    let corr = 0;
-    let norm = 0;
-    const len = buffer.length - period;
-    for (let i = 0; i < len; i++) {
-      corr += normalized[i] * normalized[i + period];
-      norm += normalized[i] * normalized[i] + normalized[i + period] * normalized[i + period];
-    }
-    const nsdf = norm > 0 ? (2 * corr) / norm : 0;
+  for (let tau = minPeriod; tau <= maxPeriod; tau++) {
+    let acf = 0;
+    let divisor = 0;
+    const len = normBuffer.length - tau;
 
-    if (nsdf > bestCorr) {
-      bestCorr = nsdf;
-      bestPeriod = period;
+    for (let i = 0; i < len; i++) {
+      acf += normBuffer[i] * normBuffer[i + tau];
+      divisor += normBuffer[i] * normBuffer[i] + normBuffer[i + tau] * normBuffer[i + tau];
+    }
+
+    const nsdf = divisor > 0 ? (2 * acf) / divisor : 0;
+    if (nsdf > maxNsdf) {
+      maxNsdf = nsdf;
+      bestPeriod = tau;
     }
   }
 
-  if (bestPeriod > 0 && bestCorr > 0.03) {
+  if (bestPeriod > 0 && maxNsdf > 0.03) {
     const f0 = sampleRate / bestPeriod;
     if (f0 >= 45 && f0 <= 1200) {
       lastValidF0 = f0;
-      // 濃淡表現用の信頼度 (0.0 ~ 1.0)
-      lastPitchConfidence = Math.min(1.0, Math.max(0.15, (bestCorr - 0.03) * 1.5 + (rms * 25)));
+      // Confidence for transparency & glow density (0.15 ~ 1.0)
+      lastConfidence = Math.min(1.0, Math.max(0.15, (maxNsdf - 0.03) * 1.6 + rms * 30));
 
       const midiNote = 12 * Math.log2(f0 / 440) + 69;
       const noteNames = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
@@ -247,7 +245,7 @@ function analyzePitch() {
   }
 
   lastValidF0 = 0;
-  lastPitchConfidence = 0;
+  lastConfidence = 0;
   updatePitchUI(0, '--');
 }
 
@@ -258,10 +256,10 @@ function updatePitchUI(f0, note) {
   if (noteEl) noteEl.textContent = note;
 }
 
-// --------------------------------------------------------------------------
-// 5. 各種インジケーター解析
-// --------------------------------------------------------------------------
-function analyzePitchAccuracy(f0) {
+// ==========================================================================
+// 5. Aux Indicators (Tuner, BPM, Formant, Chord)
+// ==========================================================================
+function processPitchAccuracy(f0) {
   const el = document.getElementById('pitch-cents-display');
   if (!el) return;
 
@@ -289,35 +287,34 @@ function analyzePitchAccuracy(f0) {
 }
 
 let bpmHistory = [];
-let lastBpmBeatTime = 0;
-function analyzeBPM() {
+let lastBeatTime = 0;
+function processBPM() {
   const el = document.getElementById('bpm-display');
   if (!el || !lowAnalyser) return;
 
   const data = new Uint8Array(lowAnalyser.frequencyBinCount);
   lowAnalyser.getByteFrequencyData(data);
 
-  let lowEnergy = 0;
-  for (let i = 0; i < data.length; i++) lowEnergy += data[i];
-  lowEnergy /= data.length;
+  let energy = 0;
+  for (let i = 0; i < data.length; i++) energy += data[i];
+  energy /= data.length;
 
   const now = performance.now();
-  if (lowEnergy > 160 && (now - lastBpmBeatTime) > 280) {
-    if (lastBpmBeatTime > 0) {
-      const bpm = Math.round(60000 / (now - lastBpmBeatTime));
+  if (energy > 155 && (now - lastBeatTime) > 280) {
+    if (lastBeatTime > 0) {
+      const bpm = Math.round(60000 / (now - lastBeatTime));
       if (bpm >= 60 && bpm <= 200) {
         bpmHistory.push(bpm);
         if (bpmHistory.length > 8) bpmHistory.shift();
-
-        const avgBpm = Math.round(bpmHistory.reduce((a, b) => a + b, 0) / bpmHistory.length);
-        el.textContent = `${avgBpm} BPM`;
+        const avg = Math.round(bpmHistory.reduce((a, b) => a + b, 0) / bpmHistory.length);
+        el.textContent = `${avg} BPM`;
       }
     }
-    lastBpmBeatTime = now;
+    lastBeatTime = now;
   }
 }
 
-function analyzeFormants() {
+function processFormants() {
   const el = document.getElementById('timbre-display');
   if (!el || !spectrumAnalyser || lastValidF0 <= 0) {
     if (el) el.textContent = '--';
@@ -326,12 +323,12 @@ function analyzeFormants() {
 
   const data = new Uint8Array(spectrumAnalyser.frequencyBinCount);
   spectrumAnalyser.getByteFrequencyData(data);
-  const sampleRate = audioCtx ? audioCtx.sampleRate : 44100;
-  const totalBins = data.length;
+  const sr = audioCtx ? audioCtx.sampleRate : 44100;
+  const total = data.length;
 
   let f1 = 0, f2 = 0;
-  for (let i = 0; i < totalBins; i++) {
-    const freq = (i * sampleRate) / (totalBins * 2);
+  for (let i = 0; i < total; i++) {
+    const freq = (i * sr) / (total * 2);
     if (freq >= 300 && freq < 1000) f1 += data[i];
     else if (freq >= 1000 && freq <= 3000) f2 += data[i];
   }
@@ -339,7 +336,7 @@ function analyzeFormants() {
   el.textContent = (f2 / (f1 + 1)) > 0.8 ? 'BRIGHT' : 'DEEP';
 }
 
-function analyzeChord() {
+function processChord() {
   const chordEl = document.getElementById('chord-display');
   const keyEl = document.getElementById('key-display');
   if (lastValidF0 <= 0) {
@@ -350,15 +347,15 @@ function analyzeChord() {
 
   const midiNote = 12 * Math.log2(lastValidF0 / 440) + 69;
   const noteNames = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
-  const root = noteNames[Math.round(midiNote) % 12];
+  const root = noteNames[((Math.round(midiNote) % 12) + 12) % 12];
   if (chordEl) chordEl.textContent = root;
   if (keyEl) keyEl.textContent = `Key: ${root} Maj`;
 }
 
-// --------------------------------------------------------------------------
-// 6. 1段目 Companion Perspective (スペクトログラム) - 濃淡明瞭化
-// --------------------------------------------------------------------------
-function drawSpectrogram() {
+// ==========================================================================
+// 6. View 1: Companion Perspective (Spectrogram - High Dynamic Contrast)
+// ==========================================================================
+function renderSpectrogramView() {
   if (!ctxSpectrogram || !canvasSpectrogram) return;
 
   const w = canvasSpectrogram.width;
@@ -374,6 +371,7 @@ function drawSpectrogram() {
     spectroBufferCtx.fillRect(0, 0, w, h);
   }
 
+  // Shift left 1.5px
   spectroBufferCtx.drawImage(spectroBufferCanvas, -1.5, 0);
 
   if (spectrumAnalyser && audioCtx && audioCtx.state === 'running') {
@@ -386,18 +384,18 @@ function drawSpectrogram() {
 
     const minMidi = 36;
     const maxMidi = 96;
-    const sampleRate = audioCtx.sampleRate;
+    const sr = audioCtx.sampleRate;
     const totalBins = spectrumAnalyser.frequencyBinCount;
 
     for (let y = 0; y < h; y++) {
       const normY = 1.0 - (y / h);
       const targetFreq = 440 * Math.pow(2, ((minMidi + normY * (maxMidi - minMidi)) - 69) / 12);
-      const binIdx = Math.round((targetFreq * totalBins * 2) / sampleRate);
+      const binIdx = Math.round((targetFreq * totalBins * 2) / sr);
       const energy = binIdx < data.length ? data[binIdx] : 0;
 
       if (energy > 12) {
-        // ガンマ補正 1.4 で濃淡のコントラストを大幅強化
-        const norm = Math.pow(energy / 255, 1.4);
+        // 濃淡メリハリ ガンマ補正 (Gamma 1.45)
+        const norm = Math.pow(energy / 255, 1.45);
         const r = Math.round(160 + norm * 95);
         const g = Math.round(30 + norm * 160);
         const b = Math.round(230 + norm * 25);
@@ -410,7 +408,7 @@ function drawSpectrogram() {
   ctxSpectrogram.clearRect(0, 0, w, h);
   ctxSpectrogram.drawImage(spectroBufferCanvas, 0, 0);
 
-  // 音高ガイドテキスト (右側)
+  // Text overlay
   ctxSpectrogram.fillStyle = 'rgba(255, 255, 255, 0.4)';
   ctxSpectrogram.font = '9px monospace';
   ctxSpectrogram.textAlign = 'right';
@@ -419,92 +417,24 @@ function drawSpectrogram() {
   ctxSpectrogram.fillText('C2 (65Hz)', w - 10, h - 8);
 }
 
-// --------------------------------------------------------------------------
-// 7. 2段目 Vocal Pitch Tracker (濃淡表現 & 快適スクロール速度復元版)
-// --------------------------------------------------------------------------
-const PITCH_MIN_MIDI = 36;
-const PITCH_MAX_MIDI = 96;
-const PITCH_SCROLL_SPEED = 180; // px/秒 (以前の快適でスピード感のあるぬるぬるスクロール)
-
-let pitchBufferCanvas = null;
-let pitchBufferCtx = null;
-let lastPitchY = -1;
-let pitchScrollAccum = 0;
-
-function drawPitchTracker(frameDelta) {
+// ==========================================================================
+// 7. View 2: Vocal Pitch Tracker (右から左へスムーズ流動 ＆ 発光濃淡グラデーション)
+// ==========================================================================
+function renderPitchTrackerView() {
   if (!ctxPitchTracker || !canvasPitchTracker) return;
 
   const w = canvasPitchTracker.width;
   const h = canvasPitchTracker.height;
   if (w <= 0 || h <= 0) return;
 
-  // オフスクリーンバッファ初期化
-  if (!pitchBufferCanvas || pitchBufferCanvas.width !== w || pitchBufferCanvas.height !== h) {
-    pitchBufferCanvas = document.createElement('canvas');
-    pitchBufferCanvas.width = w;
-    pitchBufferCanvas.height = h;
-    pitchBufferCtx = pitchBufferCanvas.getContext('2d');
-    pitchBufferCtx.fillStyle = '#020306';
-    pitchBufferCtx.fillRect(0, 0, w, h);
-    lastPitchY = -1;
-    pitchScrollAccum = 0;
-  }
+  // Background
+  ctxPitchTracker.fillStyle = '#020306';
+  ctxPitchTracker.fillRect(0, 0, w, h);
 
-  // スクロール量の計算 (FPS非依存)
-  pitchScrollAccum += (PITCH_SCROLL_SPEED * (frameDelta || 16.7)) / 1000;
-  const scrollPx = Math.floor(pitchScrollAccum);
-  pitchScrollAccum -= scrollPx;
+  const minMidi = 36;
+  const maxMidi = 96;
 
-  if (scrollPx > 0) {
-    pitchBufferCtx.drawImage(pitchBufferCanvas, -scrollPx, 0);
-    pitchBufferCtx.fillStyle = '#020306';
-    pitchBufferCtx.fillRect(w - scrollPx, 0, scrollPx, h);
-  }
-
-  const x = w - 1;
-
-  if (lastValidF0 > 0) {
-    const midi = 12 * Math.log2(lastValidF0 / 440) + 69;
-    if (midi >= PITCH_MIN_MIDI && midi <= PITCH_MAX_MIDI) {
-      const normY = (midi - PITCH_MIN_MIDI) / (PITCH_MAX_MIDI - PITCH_MIN_MIDI);
-      const currentY = h - (normY * h);
-
-      // ★ 信頼度 (lastPitchConfidence) に応じた美しい濃淡 & グロー表現 ★
-      const conf = Math.min(1.0, Math.max(0.2, lastPitchConfidence || 0.8));
-      const alpha = 0.35 + conf * 0.65;
-      const blur = Math.round(6 + conf * 12);
-      const lineWidth = 3.0 + conf * 2.5;
-
-      pitchBufferCtx.shadowBlur = blur;
-      pitchBufferCtx.shadowColor = `rgba(34, 197, 94, ${alpha})`;
-      pitchBufferCtx.strokeStyle = `rgba(74, 222, 128, ${alpha})`;
-      pitchBufferCtx.lineWidth = lineWidth;
-      pitchBufferCtx.lineCap = 'round';
-
-      pitchBufferCtx.beginPath();
-      if (lastPitchY > 0) {
-        pitchBufferCtx.moveTo(x - scrollPx - 1, lastPitchY);
-        pitchBufferCtx.lineTo(x, currentY);
-      } else {
-        pitchBufferCtx.moveTo(x, currentY);
-        pitchBufferCtx.lineTo(x + 1, currentY);
-      }
-      pitchBufferCtx.stroke();
-      pitchBufferCtx.shadowBlur = 0;
-
-      lastPitchY = currentY;
-    } else {
-      lastPitchY = -1;
-    }
-  } else {
-    lastPitchY = -1;
-  }
-
-  // メインキャンバスへ転送
-  ctxPitchTracker.clearRect(0, 0, w, h);
-  ctxPitchTracker.drawImage(pitchBufferCanvas, 0, 0);
-
-  // 音高ガイドライン (C2 ~ C6) & Hzテキスト直描きオーバーレイ
+  // 1. Grid Guidelines & Hz Labels
   const guideLabels = [
     { midi: 36, label: 'C2 (65Hz)' },
     { midi: 48, label: 'C3 (131Hz)' },
@@ -520,7 +450,7 @@ function drawPitchTracker(frameDelta) {
   ctxPitchTracker.textAlign = 'right';
 
   guideLabels.forEach(item => {
-    const normY = (item.midi - PITCH_MIN_MIDI) / (PITCH_MAX_MIDI - PITCH_MIN_MIDI);
+    const normY = (item.midi - minMidi) / (maxMidi - minMidi);
     const y = h - (normY * h);
     ctxPitchTracker.beginPath();
     ctxPitchTracker.moveTo(0, y);
@@ -529,12 +459,80 @@ function drawPitchTracker(frameDelta) {
 
     ctxPitchTracker.fillText(item.label, w - 10, y - 3);
   });
+
+  // 2. Render Smooth Glowing Ribbon Trajectory with Alpha Confidence Gradient
+  const stepX = w / (PITCH_HISTORY_SIZE - 1);
+  let isPathActive = false;
+  let lastPoint = null;
+
+  for (let i = 0; i < pitchRingBuffer.length; i++) {
+    const item = pitchRingBuffer[i];
+    const f0 = item ? item.f0 : 0;
+    const conf = item ? item.conf : 0;
+
+    if (f0 <= 0) {
+      if (isPathActive) {
+        ctxPitchTracker.stroke();
+        ctxPitchTracker.beginPath();
+        isPathActive = false;
+      }
+      lastPoint = null;
+      continue;
+    }
+
+    const midi = 12 * Math.log2(f0 / 440) + 69;
+    if (midi >= minMidi && midi <= maxMidi) {
+      const normY = (midi - minMidi) / (maxMidi - minMidi);
+      const ptY = h - (normY * h);
+      const ptX = i * stepX;
+
+      const alpha = Math.min(1.0, Math.max(0.2, conf));
+      const lineWidth = 3.0 + alpha * 2.5;
+      const shadowBlur = Math.round(6 + alpha * 10);
+
+      ctxPitchTracker.shadowBlur = shadowBlur;
+      ctxPitchTracker.shadowColor = `rgba(34, 197, 94, ${alpha})`;
+      ctxPitchTracker.strokeStyle = `rgba(74, 222, 128, ${alpha})`;
+      ctxPitchTracker.lineWidth = lineWidth;
+      ctxPitchTracker.lineCap = 'round';
+      ctxPitchTracker.lineJoin = 'round';
+
+      if (!isPathActive) {
+        ctxPitchTracker.beginPath();
+        ctxPitchTracker.moveTo(ptX, ptY);
+        isPathActive = true;
+      } else {
+        // ベジェ平滑補間
+        const midX = (lastPoint.x + ptX) / 2;
+        const midY = (lastPoint.y + ptY) / 2;
+        ctxPitchTracker.quadraticCurveTo(lastPoint.x, lastPoint.y, midX, midY);
+      }
+
+      lastPoint = { x: ptX, y: ptY };
+    }
+  }
+
+  if (isPathActive) {
+    ctxPitchTracker.stroke();
+  }
+
+  // 3. Glowing Lead Aura Head (Rightmost active point)
+  if (lastPoint && lastValidF0 > 0) {
+    ctxPitchTracker.shadowBlur = 16;
+    ctxPitchTracker.shadowColor = '#4ade80';
+    ctxPitchTracker.fillStyle = '#86efac';
+    ctxPitchTracker.beginPath();
+    ctxPitchTracker.arc(lastPoint.x, lastPoint.y, 4, 0, Math.PI * 2);
+    ctxPitchTracker.fill();
+  }
+
+  ctxPitchTracker.shadowBlur = 0; // Reset
 }
 
-// --------------------------------------------------------------------------
-// 8. 3段目 Log Hz Spectrum (★ ベジェ曲線 Spline 曲線のマルチカラー充填)
-// --------------------------------------------------------------------------
-function drawSpectrum() {
+// ==========================================================================
+// 8. View 3: Log Hz Spectrum (★ ベジェ超滑らか曲線 ＆ 送信画像マルチカラー)
+// ==========================================================================
+function renderSpectrumView() {
   if (!ctxSpectrum || !canvasSpectrum) return;
 
   const w = canvasSpectrum.width;
@@ -544,7 +542,7 @@ function drawSpectrum() {
   ctxSpectrum.fillStyle = '#020306';
   ctxSpectrum.fillRect(0, 0, w, h);
 
-  // 周波数グリッド線描画
+  // Log Frequency Grid Lines
   const freqs = [50, 200, 1000, 5000, 20000];
   ctxSpectrum.strokeStyle = 'rgba(255, 255, 255, 0.05)';
   ctxSpectrum.lineWidth = 1;
@@ -564,38 +562,37 @@ function drawSpectrum() {
     ctxSpectrum.fillText(label, x, h - 5);
   });
 
-  // ★ 滑らかなベジェ曲線 (Smooth Spline Curve) で描くマルチカラースペクトラム ★
+  // Smooth Log Spectrum Waveform
   if (spectrumAnalyser && audioCtx && audioCtx.state === 'running') {
     const data = new Uint8Array(spectrumAnalyser.frequencyBinCount);
     spectrumAnalyser.getByteFrequencyData(data);
 
     const totalBins = data.length;
-    const sampleRate = audioCtx.sampleRate;
+    const sr = audioCtx.sampleRate;
 
-    // 低音域のステップ状段差を完全解消する高解像度サンプリング (200ポイント)
-    const numPoints = 200;
+    // 高密度220サンプル ＋ 小数点以下内挿補間 (1kHz以下も超スムーズ)
+    const numPoints = 220;
     const rawPoints = [];
 
     for (let i = 0; i <= numPoints; i++) {
       const normX = i / numPoints;
       const x = normX * w;
       const freq = 30 * Math.pow(20000 / 30, normX);
-      const exactBin = (freq * totalBins * 2) / sampleRate;
+      const exactBin = (freq * totalBins * 2) / sr;
 
-      // 小数ビンの線形補間 (30Hz〜1kHzの階段化を完全防止)
       const b0 = Math.floor(exactBin);
       const b1 = Math.min(totalBins - 1, b0 + 1);
       const frac = exactBin - b0;
 
       const v0 = b0 < data.length ? data[b0] : 0;
       const v1 = b1 < data.length ? data[b1] : 0;
-      const interpolatedVal = v0 * (1 - frac) + v1 * frac;
+      const val = v0 * (1 - frac) + v1 * frac;
 
-      const y = h - (interpolatedVal / 255) * (h - 25) - 10;
+      const y = h - (val / 255) * (h - 25) - 10;
       rawPoints.push({ x, y });
     }
 
-    // 移動平均平滑化 (Smooth Moving Average Filter)
+    // 移動平均フィルター (Smoothing Filter)
     const points = [];
     for (let i = 0; i < rawPoints.length; i++) {
       let sumY = 0;
@@ -608,7 +605,7 @@ function drawSpectrum() {
       points.push({ x: rawPoints[i].x, y: sumY / count });
     }
 
-    // Smooth Bezier Curve Path (ベジェ滑らか曲線パス) の生成
+    // ベジェ曲線パスの充填
     ctxSpectrum.beginPath();
     ctxSpectrum.moveTo(0, h);
     ctxSpectrum.lineTo(points[0].x, points[0].y);
@@ -622,9 +619,9 @@ function drawSpectrum() {
     ctxSpectrum.lineTo(w, h);
     ctxSpectrum.closePath();
 
-    // 送信画像と全く同じ縦マルチカラーグラデーション充填
+    // 送信画像と全く同じプロ仕様マルチカラーグラデーション
     const grad = ctxSpectrum.createLinearGradient(0, 0, 0, h);
-    grad.addColorStop(0, 'rgba(250, 204, 21, 0.85)'); // イエロー (頂点)
+    grad.addColorStop(0, 'rgba(250, 204, 21, 0.85)'); // イエロー
     grad.addColorStop(0.35, 'rgba(251, 146, 60, 0.7)'); // オレンジ
     grad.addColorStop(0.65, 'rgba(225, 29, 72, 0.55)'); // ローズ/マゼンタ
     grad.addColorStop(0.88, 'rgba(126, 34, 206, 0.3)');  // パープル
@@ -632,7 +629,7 @@ function drawSpectrum() {
     ctxSpectrum.fillStyle = grad;
     ctxSpectrum.fill();
 
-    // Smooth Outlined Line (ベジェ滑らかアウトライン)
+    // アウトライン発光線
     ctxSpectrum.beginPath();
     ctxSpectrum.moveTo(points[0].x, points[0].y);
     for (let i = 0; i < points.length - 1; i++) {
@@ -646,7 +643,7 @@ function drawSpectrum() {
   }
 }
 
-function drawVibratoRadar() {
+function renderVibratoRadarView() {
   if (!ctxVibrato || !canvasVibratoRadar) return;
   const w = canvasVibratoRadar.width;
   const h = canvasVibratoRadar.height;
@@ -658,13 +655,13 @@ function drawVibratoRadar() {
   ctxVibrato.stroke();
 }
 
-// --------------------------------------------------------------------------
-// 9. イベントリスナー設定
-// --------------------------------------------------------------------------
-function setupEvents() {
+// ==========================================================================
+// 9. UI Events Setup
+// ==========================================================================
+function setupUIEvents() {
   if (btnReconnect) {
     btnReconnect.addEventListener('click', async () => {
-      await startAudioStream();
+      await initAudioStream();
     });
   }
 
