@@ -3,259 +3,271 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Mana Resonance - Cyber-Glass Studio</title>
+  <title>Mana Resonance - BetFlux Audio Analytics</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="index.css">
 </head>
-<body class="overflow-hidden select-none">
-  <!-- アプリのコンテナ (Cyber-Glass 効果) -->
-  <div class="app-container flex flex-col h-screen text-slate-100 font-sans">
-    
-    <!-- macOS風カスタムタイトルバー (ドラッグ可能) -->
-    <header class="title-bar flex items-center justify-between px-4 h-11 border-b border-white/10 shrink-0">
-      <!-- macOSシグナルボタン -->
+<body class="overflow-hidden select-none p-3 h-screen box-border">
+
+  <!-- メイン BetFlux アプリケーションフレーム -->
+  <div class="betflux-container flex flex-col h-full w-full rounded-3xl overflow-hidden relative">
+
+    <!-- 1. macOS風 カスタムタイトルバー -->
+    <header class="title-bar flex items-center justify-between px-5 h-10 shrink-0 z-50">
       <div class="window-controls flex space-x-2">
         <button id="btn-close" class="ctrl-btn bg-[#ff5f56]" title="閉じる"></button>
         <button id="btn-minimize" class="ctrl-btn bg-[#ffbd2e]" title="最小化"></button>
         <button id="btn-maximize" class="ctrl-btn bg-[#27c93f]" title="最大化"></button>
       </div>
-      <!-- タイトル -->
-      <div class="title-text text-xs font-extrabold tracking-widest text-slate-300 uppercase flex items-center space-x-2">
-        <span>MANA<span class="text-purple-400">.RESONANCE</span></span>
-        <span class="text-[9px] bg-purple-500/20 text-purple-300 border border-purple-500/40 px-2 py-0.5 rounded-full font-mono">STUDIO PRO v1.0.9</span>
+      <div class="text-[10px] font-mono tracking-widest text-slate-400 font-bold uppercase">
+        MANA RESONANCE — AUDIO ANALYTICS SUITE
       </div>
-      <!-- スペーサー -->
       <div class="w-16"></div>
     </header>
 
-    <!-- メインコンテンツ領域 -->
-    <main class="flex-1 flex flex-col overflow-hidden p-5 space-y-4">
-      
-      <!-- 1. トップコントロールバー -->
-      <section class="cyber-glass-card flex flex-col md:flex-row md:items-center justify-between gap-3 p-3 shrink-0">
+    <!-- 2. 本体レイアウト (左サイドバー ＋ 右メインアナリティクス) -->
+    <div class="flex-1 flex overflow-hidden min-h-0">
 
-        <!-- ドラッグ＆ドロップ領域 -->
-        <div id="drop-zone" class="flex-1 flex items-center justify-center border-2 border-dashed border-white/15 rounded-xl py-2 px-4 hover:border-purple-400 hover:bg-purple-500/10 transition-all text-xs text-slate-300 font-medium cursor-pointer">
-          <svg class="w-4 h-4 mr-2 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
-          音声/動画ファイルをドラッグ＆ドロップして即時解析
-        </div>
-
-        <!-- ベータ/プレリリース検出トグル -->
-        <label class="flex items-center space-x-1.5 cursor-pointer select-none text-[11px] bg-black/40 hover:bg-purple-950/30 border border-white/10 text-purple-300 rounded-xl px-3.5 py-2 font-bold transition-all" title="プレリリース（開発中ベータバージョン）も自動アップデートの検知対象に含めます。">
-          <input type="checkbox" id="beta-update-toggle" class="rounded border-purple-800 text-purple-600 focus:ring-0 focus:ring-offset-0 bg-black w-3.5 h-3.5 cursor-pointer">
-          <span class="ml-1 tracking-wider text-[9px]">BETA UPDATES</span>
-        </label>
-
-        <!-- 手動再接続ボタン -->
-        <button id="btn-reconnect" class="flex items-center space-x-1.5 bg-purple-600/20 hover:bg-purple-600/35 border border-purple-500/40 text-purple-200 rounded-xl px-4 py-2 text-xs font-bold transition-all shadow-lg shadow-purple-950/30 active:scale-95" title="マイク切り替え等で音が途切れた際のリスタート用">
-          <span>🔄</span>
-          <span>RECONNECT</span>
-        </button>
-
-        <!-- オーディオ再生/一時停止コントロール (ファイル用) -->
-        <div id="file-player-controls" class="hidden flex items-center space-x-4 bg-black/80 px-4 py-2 rounded-xl border border-white/15 flex-1 min-w-[300px]">
-          <span id="file-name" class="text-xs font-bold text-purple-300 max-w-[120px] truncate">No File</span>
-          
-          <div class="flex items-center space-x-2">
-            <button id="btn-play-pause" class="bg-purple-600 hover:bg-purple-500 text-white rounded-lg px-3 py-1 text-xs font-bold transition-all">再生</button>
-            <button id="btn-stop" class="bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg px-3 py-1 text-xs font-bold transition-all">停止</button>
-          </div>
-
-          <!-- シークバー & 時間表示 -->
-          <div class="flex-1 flex items-center space-x-2 min-w-[150px]">
-            <span id="current-time" class="text-[10px] font-mono text-slate-400">0:00</span>
-            <input type="range" id="seek-bar" min="0" max="100" value="0" class="flex-1 accent-purple-500 h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer">
-            <span id="duration-time" class="text-[10px] font-mono text-slate-400">0:00</span>
-          </div>
-
-          <!-- ミュートトグル -->
-          <button id="btn-mute" class="flex items-center space-x-1 border border-purple-500/30 bg-purple-500/20 text-purple-300 rounded px-2.5 py-1 text-xs font-bold transition-colors">
-            <span id="mute-icon">🔇</span>
-            <span id="mute-text">MUTE</span>
-          </button>
-
-          <button id="btn-record" class="hidden"></button>
-          <button id="btn-clear-file" class="text-slate-500 hover:text-red-400 text-sm font-bold ml-2">✕</button>
-        </div>
-      </section>
-
-      <!-- 2. 主要分析＆表示モニター領域 -->
-      <div class="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-4 overflow-hidden min-h-0">
+      <!-- A. 左スリムサイドバー -->
+      <aside class="w-56 bg-black/40 border-r border-white/5 flex flex-col justify-between p-4 shrink-0 z-40">
         
-        <!-- 左側カラム: 3-Band Drum-Beat & フィルター設定 -->
-        <section class="cyber-glass-card lg:col-span-1 flex flex-col p-4 space-y-4 overflow-hidden">
-          <div class="flex items-center justify-between border-b border-white/10 pb-2.5">
-            <h2 class="text-xs font-black uppercase tracking-wider text-purple-400 flex items-center">
-              <span class="w-2 h-2 rounded-full bg-purple-500 mr-2 animate-pulse"></span>
-              3-Band Drum-Beat Analyzer
+        <!-- 上部: ブランドロゴ ＆ メニュー -->
+        <div class="space-y-6">
+          <!-- ブランドロゴ -->
+          <div class="flex items-center space-x-3 px-2 pt-1">
+            <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center shadow-lg shadow-purple-900/40 border border-white/20">
+              <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+            </div>
+            <div>
+              <h1 class="text-xs font-black tracking-wider text-white leading-tight">MANA<span class="text-purple-400">.PRO</span></h1>
+              <p class="text-[9px] text-slate-500 font-mono font-semibold">STUDIO v1.0.9</p>
+            </div>
+          </div>
+
+          <!-- メニューカテゴリ -->
+          <div class="space-y-4">
+            <div>
+              <span class="text-[9px] font-extrabold text-slate-500 uppercase tracking-widest px-2.5 block mb-2">ANALYTICS</span>
+              <nav class="space-y-1">
+                <a href="#" class="nav-item-active flex items-center space-x-3 px-3 py-2 rounded-xl text-xs font-bold text-white transition-all">
+                  <svg class="w-4 h-4 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                  <span>Live Analysis</span>
+                </a>
+              </nav>
+            </div>
+
+            <!-- フィルタープリセット -->
+            <div>
+              <span class="text-[9px] font-extrabold text-slate-500 uppercase tracking-widest px-2.5 block mb-2">PRESETS</span>
+              <div class="space-y-1" id="filter-presets">
+                <button data-preset="vocal" class="preset-btn active w-full text-left px-3 py-1.5 rounded-xl text-[11px] font-bold text-purple-300 bg-purple-500/10 border border-purple-500/30 transition-all">Vocal Boost</button>
+                <button data-preset="flat" class="preset-btn w-full text-left px-3 py-1.5 rounded-xl text-[11px] font-bold text-slate-400 hover:text-slate-200 hover:bg-white/5 transition-all">Flat (Original)</button>
+                <button data-preset="bass" class="preset-btn w-full text-left px-3 py-1.5 rounded-xl text-[11px] font-bold text-slate-400 hover:text-slate-200 hover:bg-white/5 transition-all">Bass Boost</button>
+                <button data-preset="clear" class="preset-btn w-full text-left px-3 py-1.5 rounded-xl text-[11px] font-bold text-slate-400 hover:text-slate-200 hover:bg-white/5 transition-all">Noise Cut</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 下部: 再接続 ＆ BETA設定カード -->
+        <div class="space-y-2.5 pt-3 border-t border-white/5">
+          <label class="flex items-center justify-between cursor-pointer select-none text-[10px] font-bold text-slate-400 bg-black/40 p-2.5 rounded-xl border border-white/5 hover:border-purple-500/30 transition-all">
+            <span>BETA UPDATES</span>
+            <input type="checkbox" id="beta-update-toggle" class="rounded border-purple-800 text-purple-600 focus:ring-0 bg-black w-3.5 h-3.5 cursor-pointer">
+          </label>
+
+          <button id="btn-reconnect" class="w-full flex items-center justify-center space-x-2 bg-gradient-to-r from-purple-600/30 to-indigo-600/30 hover:from-purple-600/40 hover:to-indigo-600/40 border border-purple-500/40 text-purple-200 rounded-xl py-2.5 text-xs font-black transition-all active:scale-95">
+            <span>🔄</span>
+            <span>RECONNECT</span>
+          </button>
+        </div>
+      </aside>
+
+      <!-- B. 右メインアナリティクスエリア -->
+      <main class="flex-1 flex flex-col p-6 space-y-5 overflow-y-auto min-w-0">
+
+        <!-- 1. メインヘッダー ＆ ドロップゾーン -->
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 shrink-0">
+          <div>
+            <h2 class="text-3xl font-bold tracking-tight text-white">
+              Vocal <span class="font-light text-slate-400">Analytics</span>
             </h2>
-            <span class="text-xs text-purple-300 font-mono font-bold" id="fps-counter">60 FPS</span>
           </div>
 
-          <!-- ビートパルスインジケーター -->
-          <div class="flex-1 flex items-center justify-center relative bg-black/60 rounded-xl border border-white/10 overflow-hidden min-h-[140px]">
-            <div id="beat-pulse-outer" class="absolute w-24 h-24 rounded-full bg-purple-500/10 border border-purple-500/20 transition-transform duration-75 ease-out"></div>
-            <div id="beat-pulse-inner" class="absolute w-14 h-14 rounded-full bg-purple-600/25 border border-purple-500/30 transition-transform duration-75 ease-out"></div>
-            <div class="text-center z-10">
-              <span class="text-[9px] text-slate-400 uppercase tracking-widest font-bold block mb-1">KICK ATTACK PEAK</span>
-              <span id="kick-peak-display" class="text-2xl font-black font-mono text-purple-300">-- dB</span>
+          <!-- ドロップゾーン & プレイヤー -->
+          <div class="flex items-center space-x-3">
+            <div id="drop-zone" class="flex items-center border border-white/10 rounded-2xl px-4 py-2 hover:border-purple-400 hover:bg-purple-500/5 transition-all text-xs text-slate-300 font-semibold cursor-pointer">
+              <svg class="w-4 h-4 mr-2 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
+              Drop Audio / Video File
             </div>
+
+            <div id="file-player-controls" class="hidden flex items-center space-x-3 bg-black/80 px-3.5 py-1.5 rounded-2xl border border-white/15">
+              <span id="file-name" class="text-xs font-bold text-purple-300 max-w-[100px] truncate">No File</span>
+              <button id="btn-play-pause" class="bg-purple-600 text-white rounded-lg px-2.5 py-1 text-xs font-bold">再生</button>
+              <button id="btn-stop" class="bg-slate-800 text-slate-300 rounded-lg px-2.5 py-1 text-xs font-bold">停止</button>
+              <span id="current-time" class="text-[10px] font-mono text-slate-400">0:00</span>
+              <input type="range" id="seek-bar" min="0" max="100" value="0" class="w-20 accent-purple-500 h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer">
+              <span id="duration-time" class="text-[10px] font-mono text-slate-400">0:00</span>
+              <button id="btn-mute" class="hidden"></button>
+              <button id="btn-record" class="hidden"></button>
+              <button id="btn-clear-file" class="text-slate-500 hover:text-red-400 text-xs font-bold">✕</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. トップ KPI ステータスカード群 (BetFlux スタイル 6グリッド) -->
+        <section class="grid grid-cols-2 md:grid-cols-6 gap-3 shrink-0">
+          
+          <!-- Stat 1: Pitch F0 -->
+          <div class="betflux-card grid-mesh-bg p-3.5 flex flex-col justify-between">
+            <span class="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Pitch (F0)</span>
+            <div class="my-1">
+              <span id="pitch-freq" class="text-2xl font-black font-mono text-white tracking-tight">-- Hz</span>
+            </div>
+            <span id="pitch-note" class="text-[10px] font-mono font-semibold text-purple-300">--</span>
           </div>
 
-          <!-- 3帯域パワーバー -->
-          <div class="space-y-2.5 bg-black/40 p-3 rounded-xl border border-white/10 shrink-0">
-            <!-- LOW -->
-            <div class="space-y-1">
-              <div class="flex justify-between text-[11px] font-bold">
-                <span class="text-slate-400">LOW (Bass: 20-150Hz)</span>
-                <span id="low-val" class="font-mono text-cyan-400">0dB</span>
-              </div>
-              <div class="w-full bg-black h-2.5 rounded-full overflow-hidden p-[1px] border border-white/10">
-                <div id="bar-low" class="h-full bg-gradient-to-r from-cyan-500 to-blue-500 rounded-full transition-all duration-75" style="width: 0%"></div>
-              </div>
+          <!-- Stat 2: Pitch Tuner -->
+          <div class="betflux-card grid-mesh-bg p-3.5 flex flex-col justify-between">
+            <span class="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Pitch Tuner</span>
+            <div class="my-1">
+              <span id="pitch-cents-display" class="text-xl font-black font-mono text-emerald-400 tracking-tight">--</span>
             </div>
-            <!-- MID -->
-            <div class="space-y-1">
-              <div class="flex justify-between text-[11px] font-bold">
-                <span class="text-slate-400">MID (Vocal: 150Hz-2.5kHz)</span>
-                <span id="mid-val" class="font-mono text-purple-400">0dB</span>
-              </div>
-              <div class="w-full bg-black h-2.5 rounded-full overflow-hidden p-[1px] border border-white/10">
-                <div id="bar-mid" class="h-full bg-gradient-to-r from-purple-500 to-fuchsia-500 rounded-full transition-all duration-75" style="width: 0%"></div>
-              </div>
-            </div>
-            <!-- HIGH -->
-            <div class="space-y-1">
-              <div class="flex justify-between text-[11px] font-bold">
-                <span class="text-slate-400">HIGH (Cymbal: &gt;2.5kHz)</span>
-                <span id="high-val" class="font-mono text-rose-400">0dB</span>
-              </div>
-              <div class="w-full bg-black h-2.5 rounded-full overflow-hidden p-[1px] border border-white/10">
-                <div id="bar-high" class="h-full bg-gradient-to-r from-fuchsia-500 to-rose-500 rounded-full transition-all duration-75" style="width: 0%"></div>
-              </div>
-            </div>
+            <span class="text-[9px] font-mono text-slate-500">Accuracy</span>
           </div>
 
-          <!-- フィルタープリセット選択 -->
-          <div class="flex items-center justify-between text-xs border-t border-white/10 pt-2.5 shrink-0">
-            <span class="text-slate-400 font-bold">Filter Preset</span>
-            <div class="flex space-x-1" id="filter-presets">
-              <button data-preset="pop" class="preset-btn active px-2 py-1 rounded-lg bg-purple-500/20 text-purple-300 border border-purple-500/40 text-[9px] font-bold transition-all">POP</button>
-              <button data-preset="edm" class="preset-btn px-2 py-1 rounded-lg bg-black/40 text-slate-400 border border-white/10 text-[9px] font-bold transition-all">EDM</button>
-              <button data-preset="acoustic" class="preset-btn px-2 py-1 rounded-lg bg-black/40 text-slate-400 border border-white/10 text-[9px] font-bold transition-all">ACOUSTIC</button>
-              <button data-preset="hardcore" class="preset-btn px-2 py-1 rounded-lg bg-black/40 text-slate-400 border border-white/10 text-[9px] font-bold transition-all">HARDCORE</button>
-              <button data-preset="beatbox" class="preset-btn px-2 py-1 rounded-lg bg-black/40 text-slate-400 border border-white/10 text-[9px] font-bold transition-all">BEATBOX</button>
+          <!-- Stat 3: BPM Meter -->
+          <div class="betflux-card grid-mesh-bg p-3.5 flex flex-col justify-between">
+            <span class="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">BPM Tempo</span>
+            <div class="my-1">
+              <span id="bpm-display" class="text-xl font-black font-mono text-cyan-400 tracking-tight">-- BPM</span>
             </div>
+            <span class="text-[9px] font-mono text-slate-500">Realtime Beat</span>
           </div>
+
+          <!-- Stat 4: Timbre -->
+          <div class="betflux-card grid-mesh-bg p-3.5 flex flex-col justify-between">
+            <span class="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Timbre</span>
+            <div class="my-1">
+              <span id="timbre-display" class="text-sm font-black font-mono text-indigo-300 truncate block">--</span>
+            </div>
+            <span class="text-[9px] font-mono text-slate-500">Formant F1/F2</span>
+          </div>
+
+          <!-- Stat 5: Chord & Key -->
+          <div class="betflux-card grid-mesh-bg p-3.5 flex flex-col justify-between">
+            <span class="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Chord & Key</span>
+            <div class="my-1">
+              <span id="chord-display" class="text-xl font-black font-mono text-indigo-400 truncate block">--</span>
+            </div>
+            <span id="key-display" class="text-[10px] font-mono font-semibold text-slate-400 truncate block">Key: --</span>
+          </div>
+
+          <!-- Stat 6: Vocal Range -->
+          <div class="betflux-card grid-mesh-bg p-3.5 flex flex-col justify-between">
+            <div class="flex items-center justify-between">
+              <span class="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Range</span>
+              <div class="flex space-x-1">
+                <button id="btn-range-mode" class="text-[8px] bg-emerald-500/20 text-emerald-300 px-1 py-0.5 rounded font-bold font-mono">CONF</button>
+                <button id="btn-reset-range" class="text-[8px] bg-white/10 text-slate-300 px-1 py-0.5 rounded font-bold">RESET</button>
+              </div>
+            </div>
+            <div class="my-1">
+              <span class="text-sm font-black font-mono text-emerald-400 truncate block">
+                <span id="range-min">--</span> ~ <span id="range-max">--</span>
+              </span>
+            </div>
+            <span id="range-span" class="text-[9px] font-mono text-slate-500 truncate block">--</span>
+          </div>
+
         </section>
 
-        <!-- 右側 2カラム: 高解像度モニター ＆ 8カラム完全1段ステータスボード -->
-        <section class="cyber-glass-card lg:col-span-2 flex flex-col p-4 space-y-3 overflow-hidden">
+        <!-- 3. 中央メインアナライザー領域 (スペクトログラム ＋ ピッチトラッカー ＋ 浮遊立体カード) -->
+        <section class="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-4 min-h-[320px] relative">
           
-          <!-- 3. 上部: 8カラム完全1段ステータスボード -->
-          <div class="grid grid-cols-2 md:grid-cols-8 gap-2 bg-black/60 p-3 rounded-xl border border-white/10 shrink-0">
-            <!-- 1. 検出ピッチ -->
-            <div class="flex flex-col">
-              <span class="text-[9px] text-slate-400 uppercase tracking-wider font-extrabold">Pitch (F0)</span>
-              <span id="pitch-freq" class="text-base font-black font-mono text-purple-400 truncate mt-0.5">-- Hz</span>
-              <span id="pitch-note" class="text-[10px] text-slate-300 font-mono truncate">--</span>
+          <!-- メイン大モニター: 伴奏透視システム（スペクトログラム）＋ ボーカルピッチトラッカー (2カラム占有) -->
+          <div class="lg:col-span-2 betflux-card p-4 flex flex-col space-y-3 relative overflow-hidden grid-mesh-bg">
+            <div class="flex items-center justify-between z-10">
+              <span class="text-xs font-black uppercase tracking-wider text-slate-300 flex items-center">
+                <span class="w-2 h-2 rounded-full bg-purple-500 mr-2 animate-pulse"></span>
+                Companion Perspective & Pitch Trajectory
+              </span>
+              <span class="text-xs text-slate-400 font-mono font-bold" id="fps-counter">60 FPS</span>
             </div>
-            <!-- 2. ピッチ精度 -->
-            <div class="flex flex-col">
-              <span class="text-[9px] text-slate-400 uppercase tracking-wider font-extrabold">Pitch Tuner</span>
-              <span id="pitch-cents-display" class="text-xs font-mono font-bold text-slate-400 mt-1 truncate">--</span>
-              <span class="text-[8px] text-slate-500 font-mono mt-0.5">Accuracy</span>
-            </div>
-            <!-- 3. リアルタイム BPM -->
-            <div class="flex flex-col">
-              <span class="text-[9px] text-slate-400 uppercase tracking-wider font-extrabold">BPM Meter</span>
-              <span id="bpm-display" class="text-xs font-mono font-bold text-cyan-400 mt-1 truncate">-- BPM</span>
-              <span class="text-[8px] text-slate-500 font-mono mt-0.5">Tempo</span>
-            </div>
-            <!-- 4. 声質 ＆ フォルマント -->
-            <div class="flex flex-col">
-              <span class="text-[9px] text-slate-400 uppercase tracking-wider font-extrabold">Timbre</span>
-              <span id="timbre-display" class="text-[9px] font-mono font-bold text-indigo-300 mt-1 truncate">--</span>
-              <span class="text-[8px] text-slate-500 font-mono mt-0.5">Formant F1/F2</span>
-            </div>
-            <!-- 5. 声区 -->
-            <div class="flex flex-col justify-center">
-              <span class="text-[9px] text-slate-400 uppercase tracking-wider font-extrabold mb-1">Voice Register</span>
-              <div class="flex space-x-0.5">
-                <span id="reg-chest" class="reg-indicator text-[8px] bg-black border border-white/10 text-slate-600 px-1 py-0.5 rounded font-black">CHEST</span>
-                <span id="reg-mix" class="reg-indicator text-[8px] bg-black border border-white/10 text-slate-600 px-1 py-0.5 rounded font-black">MIX</span>
-                <span id="reg-head" class="reg-indicator text-[8px] bg-black border border-white/10 text-slate-600 px-1 py-0.5 rounded font-black">HEAD</span>
+
+            <!-- キャンバスモニター -->
+            <div class="flex-1 flex flex-col space-y-2 min-h-0 relative">
+              <!-- 上: スペクトログラム -->
+              <div class="flex-1 bg-black/80 rounded-2xl overflow-hidden border border-white/10 relative">
+                <canvas id="canvas-spectrogram" class="w-full h-full block"></canvas>
+              </div>
+              <!-- 下: ピッチトラッカー -->
+              <div class="h-32 bg-black/80 rounded-2xl overflow-hidden border border-white/10 relative">
+                <canvas id="canvas-pitch-tracker" class="w-full h-full block"></canvas>
+                <canvas id="canvas-particles" class="w-full h-full block absolute top-0 left-0 pointer-events-none"></canvas>
               </div>
             </div>
-            <!-- 6. ビブラート -->
-            <div class="flex flex-col">
-              <span class="text-[9px] text-slate-400 uppercase tracking-wider font-extrabold">Vibrato</span>
-              <div class="flex items-center justify-between mt-1 space-x-1">
-                <div class="flex flex-col min-w-0">
-                  <div id="vibrato-status" class="text-[10px] font-bold text-slate-500 flex items-center space-x-1">
-                    <span class="w-1.5 h-1.5 rounded-full bg-slate-600 inline-block" id="vibrato-dot"></span>
+          </div>
+
+          <!-- 右側: 周波数スペクトラム ＋ 3-Band ＋ 浮遊立体ステータスカード -->
+          <div class="lg:col-span-1 flex flex-col space-y-4">
+            
+            <!-- Log Hz Spectrum キャンバス -->
+            <div class="betflux-card p-3 flex flex-col space-y-2 flex-1 min-h-[160px]">
+              <span class="text-[10px] font-black text-slate-400 uppercase tracking-wider">Log Hz Spectrum</span>
+              <div class="flex-1 bg-black/80 rounded-xl overflow-hidden border border-white/10 relative">
+                <canvas id="canvas-spectrum" class="w-full h-full block"></canvas>
+              </div>
+            </div>
+
+            <!-- 浮遊立体カード (Float Cards): Vibrato & Voice Register -->
+            <div class="float-card p-4 space-y-3 shrink-0">
+              <!-- 声区 Voice Register -->
+              <div>
+                <span class="text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-1.5">Voice Register</span>
+                <div class="flex space-x-1.5">
+                  <span id="reg-chest" class="reg-indicator flex-1 text-center text-[10px] bg-black/60 border border-white/10 text-slate-500 py-1 rounded-lg font-black">CHEST</span>
+                  <span id="reg-mix" class="reg-indicator flex-1 text-center text-[10px] bg-black/60 border border-white/10 text-slate-500 py-1 rounded-lg font-black">MIX</span>
+                  <span id="reg-head" class="reg-indicator flex-1 text-center text-[10px] bg-black/60 border border-white/10 text-slate-500 py-1 rounded-lg font-black">HEAD</span>
+                </div>
+              </div>
+
+              <!-- ビブラート Vibrato Radar -->
+              <div class="pt-2 border-t border-white/10 flex items-center justify-between">
+                <div>
+                  <span class="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Vibrato Radar</span>
+                  <div id="vibrato-status" class="text-xs font-black text-slate-400 flex items-center space-x-1.5 mt-0.5">
+                    <span class="w-2 h-2 rounded-full bg-slate-600 inline-block" id="vibrato-dot"></span>
                     <span id="vibrato-text">OFF</span>
                   </div>
-                  <span id="vibrato-details" class="text-[8px] font-mono text-slate-400 leading-tight mt-0.5 truncate">-- Hz/-- c</span>
+                  <span id="vibrato-details" class="text-[9px] font-mono text-purple-300 block mt-0.5">-- Hz / -- c</span>
                 </div>
-                <canvas id="canvas-vibrato-radar" class="w-8 h-8 bg-black rounded border border-white/10 shrink-0" width="32" height="32"></canvas>
+                <canvas id="canvas-vibrato-radar" class="w-12 h-12 bg-black rounded-xl border border-white/10 shrink-0" width="48" height="48"></canvas>
               </div>
             </div>
-            <!-- 7. 和音 ＋ キー -->
-            <div class="flex flex-col">
-              <span class="text-[9px] text-slate-400 uppercase tracking-wider font-extrabold">Chord / Key</span>
-              <span id="chord-display" class="text-sm font-bold font-mono text-indigo-400 truncate mt-0.5">--</span>
-              <span id="key-display" class="text-[9px] text-slate-400 font-mono truncate leading-none mt-0.5">Key: --</span>
-            </div>
-            <!-- 8. 実効音域 -->
-            <div class="flex flex-col justify-between">
-              <div class="flex justify-between items-center">
-                <span class="text-[9px] text-slate-400 uppercase tracking-wider font-extrabold">Vocal Range</span>
-                <div class="flex items-center space-x-0.5">
-                  <button id="btn-range-mode" class="text-[7px] bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 rounded px-1 py-0.5 font-bold font-mono">CONF</button>
-                  <button id="btn-reset-range" class="text-[8px] bg-white/5 border border-white/10 text-slate-300 rounded px-1 py-0.5 font-bold">RESET</button>
-                </div>
-              </div>
-              <div class="text-[11px] font-bold font-mono text-emerald-400 mt-0.5 truncate">
-                <span id="range-min">--</span> ~ <span id="range-max">--</span>
-              </div>
-              <div id="range-span" class="text-[8px] text-slate-400 font-mono truncate">--</div>
-            </div>
-          </div>
 
-          <!-- 4. 中部: 伴奏透視システム（スペクトログラム） -->
-          <div class="flex-1 flex flex-col min-h-[120px] relative">
-            <div class="absolute top-2 left-3 z-10 flex items-center space-x-2 pointer-events-none">
-              <span class="text-[9px] font-black bg-indigo-950/80 text-indigo-300 border border-indigo-500/40 rounded-full px-2.5 py-0.5 uppercase tracking-wider">Companion Perspective</span>
-            </div>
-            <div class="flex-1 bg-black rounded-xl overflow-hidden border border-white/10 relative">
-              <canvas id="canvas-spectrogram" class="w-full h-full block"></canvas>
-            </div>
-          </div>
-
-          <!-- 5. 下部 2分割: Vocal Pitch Tracker & 対数スペクトラム -->
-          <div class="h-44 grid grid-cols-1 md:grid-cols-2 gap-3 shrink-0">
-            <!-- ボーカルピッチトラッカー -->
-            <div class="flex flex-col relative bg-black rounded-xl overflow-hidden border border-white/10">
-              <canvas id="canvas-pitch-tracker" class="w-full h-full block"></canvas>
-              <canvas id="canvas-particles" class="w-full h-full block absolute top-0 left-0 pointer-events-none"></canvas>
-            </div>
-
-            <!-- Log Hz Spectrum -->
-            <div class="flex flex-col relative bg-black rounded-xl overflow-hidden border border-white/10">
-              <canvas id="canvas-spectrum" class="w-full h-full block"></canvas>
-            </div>
           </div>
 
         </section>
 
-      </div>
+        <!-- 4. 下部: 3-Band Drum Attack Bar & 非表示互換ダミー -->
+        <div class="hidden">
+          <div id="beat-pulse-outer"></div>
+          <div id="beat-pulse-inner"></div>
+          <span id="kick-peak-display"></span>
+          <span id="low-val"></span><div id="bar-low"></div>
+          <span id="mid-val"></span><div id="bar-mid"></div>
+          <span id="high-val"></span><div id="bar-high"></div>
+          <button id="btn-reset-range"></button>
+        </div>
 
-    </main>
+      </main>
+
+    </div>
   </div>
 
-  <!-- JS ロジック -->
+  <!-- JavaScript ロジック -->
   <script src="renderer.js"></script>
 </body>
 </html>
