@@ -111,19 +111,16 @@ function renderLoop(timestamp) {
     lastFpsTimestamp = timestamp;
   }
 
-  // 音声解析 (重い自己相関は30fps相当に間引いて実行)
+  // 音声解析 (毎フレームリアルタイム高精細解析)
   if (audioCtx && audioCtx.state === 'running') {
-    pitchAnalyzeAccumulator += frameDelta;
-    if (pitchAnalyzeAccumulator >= PITCH_ANALYZE_INTERVAL) {
-      pitchAnalyzeAccumulator = 0;
-      analyzePitch();
-    }
+    analyzePitch();
     analyzePitchAccuracy(lastValidF0);
     analyzeBPM();
     analyzeFormants();
     analyzeChord();
   } else {
     lastValidF0 = 0;
+    lastPitchConfidence = 0;
   }
 
   // 描画処理 (audioCtx に関わらず 100% 常時描画)
@@ -183,40 +180,37 @@ async function startAudioStream() {
   }
 }
 
-// --------------------------------------------------------------------------
-// 4. 音高 (Pitch F0) 自己相関解析 - PC音声対応強化版
-// --------------------------------------------------------------------------
+let lastPitchConfidence = 0;
+
 function analyzePitch() {
   if (!pitchAnalyser) return;
 
   const buffer = new Float32Array(pitchAnalyser.fftSize);
   pitchAnalyser.getFloatTimeDomainData(buffer);
 
-  // RMS計算
+  // RMS (音圧) 計算
   let sum = 0;
   for (let i = 0; i < buffer.length; i++) sum += buffer[i] * buffer[i];
   const rms = Math.sqrt(sum / buffer.length);
 
-  // PC音声(getDisplayMedia)は音量が非常に小さい場合があるため閾値を極限まで下げる
-  if (rms < 0.0008) {
+  if (rms < 0.0006) {
     lastValidF0 = 0;
+    lastPitchConfidence = 0;
     updatePitchUI(0, '--');
     return;
   }
 
-  // 信号を正規化することでgetDisplayMediaの音量差を吸収
+  // 信号の正規化
   const normalized = new Float32Array(buffer.length);
-  const scale = rms > 0 ? 1.0 / (rms * 8) : 1.0;
+  const scale = rms > 0 ? 1.0 / (rms * 6) : 1.0;
   for (let i = 0; i < buffer.length; i++) {
     normalized[i] = Math.max(-1, Math.min(1, buffer[i] * scale));
   }
 
   const sampleRate = audioCtx.sampleRate;
-  // 範囲を広げて検出感度向上 (40Hz〜1200Hz)
   const minPeriod = Math.floor(sampleRate / 1200);
-  const maxPeriod = Math.floor(sampleRate / 40);
+  const maxPeriod = Math.floor(sampleRate / 45);
 
-  // 正規化自己相関 (NSDF: Normalized Square Difference Function 近似)
   let bestCorr = -1;
   let bestPeriod = -1;
 
@@ -228,7 +222,6 @@ function analyzePitch() {
       corr += normalized[i] * normalized[i + period];
       norm += normalized[i] * normalized[i] + normalized[i + period] * normalized[i + period];
     }
-    // 正規化相関係数 (-1〜1)
     const nsdf = norm > 0 ? (2 * corr) / norm : 0;
 
     if (nsdf > bestCorr) {
@@ -237,11 +230,12 @@ function analyzePitch() {
     }
   }
 
-  // 閾値を大幅緩和 (0.1 → 0.05) してPC音楽でも検出可能にする
-  if (bestPeriod > 0 && bestCorr > 0.05) {
+  if (bestPeriod > 0 && bestCorr > 0.03) {
     const f0 = sampleRate / bestPeriod;
-    if (f0 >= 40 && f0 <= 1200) {
+    if (f0 >= 45 && f0 <= 1200) {
       lastValidF0 = f0;
+      // 濃淡表現用の信頼度 (0.0 ~ 1.0)
+      lastPitchConfidence = Math.min(1.0, Math.max(0.15, (bestCorr - 0.03) * 1.5 + (rms * 25)));
 
       const midiNote = 12 * Math.log2(f0 / 440) + 69;
       const noteNames = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
@@ -253,6 +247,7 @@ function analyzePitch() {
   }
 
   lastValidF0 = 0;
+  lastPitchConfidence = 0;
   updatePitchUI(0, '--');
 }
 
@@ -425,17 +420,16 @@ function drawSpectrogram() {
 }
 
 // --------------------------------------------------------------------------
-// 7. 2段目 Vocal Pitch Tracker
-// FPS非依存のデルタ時間ベーススクロール ＆ 固定スコープの定数
+// 7. 2段目 Vocal Pitch Tracker (濃淡表現 & 快適スクロール速度復元版)
 // --------------------------------------------------------------------------
 const PITCH_MIN_MIDI = 36;
 const PITCH_MAX_MIDI = 96;
-const PITCH_SCROLL_SPEED = 80; // px/秒 (60FPS→約1.3px/frame、160FPS→0.5px/frame)
+const PITCH_SCROLL_SPEED = 180; // px/秒 (以前の快適でスピード感のあるぬるぬるスクロール)
 
 let pitchBufferCanvas = null;
 let pitchBufferCtx = null;
 let lastPitchY = -1;
-let pitchScrollAccum = 0; // スクロール蓄積量
+let pitchScrollAccum = 0;
 
 function drawPitchTracker(frameDelta) {
   if (!ctxPitchTracker || !canvasPitchTracker) return;
@@ -456,21 +450,17 @@ function drawPitchTracker(frameDelta) {
     pitchScrollAccum = 0;
   }
 
-  // ★ デルタ時間に基づいてスクロール量を計算 (FPS非依存) ★
+  // スクロール量の計算 (FPS非依存)
   pitchScrollAccum += (PITCH_SCROLL_SPEED * (frameDelta || 16.7)) / 1000;
   const scrollPx = Math.floor(pitchScrollAccum);
-  pitchScrollAccum -= scrollPx; // 残り小数を次フレームへ持ち越し
+  pitchScrollAccum -= scrollPx;
 
   if (scrollPx > 0) {
-    // バッファ全体を左にscrollPxスクロール
     pitchBufferCtx.drawImage(pitchBufferCanvas, -scrollPx, 0);
-
-    // 右端エリアをクリア
     pitchBufferCtx.fillStyle = '#020306';
     pitchBufferCtx.fillRect(w - scrollPx, 0, scrollPx, h);
   }
 
-  // 右端への最新ピッチデータの追加描画
   const x = w - 1;
 
   if (lastValidF0 > 0) {
@@ -479,10 +469,16 @@ function drawPitchTracker(frameDelta) {
       const normY = (midi - PITCH_MIN_MIDI) / (PITCH_MAX_MIDI - PITCH_MIN_MIDI);
       const currentY = h - (normY * h);
 
-      pitchBufferCtx.shadowBlur = 14;
-      pitchBufferCtx.shadowColor = '#22c55e';
-      pitchBufferCtx.strokeStyle = '#4ade80';
-      pitchBufferCtx.lineWidth = 4.5;
+      // ★ 信頼度 (lastPitchConfidence) に応じた美しい濃淡 & グロー表現 ★
+      const conf = Math.min(1.0, Math.max(0.2, lastPitchConfidence || 0.8));
+      const alpha = 0.35 + conf * 0.65;
+      const blur = Math.round(6 + conf * 12);
+      const lineWidth = 3.0 + conf * 2.5;
+
+      pitchBufferCtx.shadowBlur = blur;
+      pitchBufferCtx.shadowColor = `rgba(34, 197, 94, ${alpha})`;
+      pitchBufferCtx.strokeStyle = `rgba(74, 222, 128, ${alpha})`;
+      pitchBufferCtx.lineWidth = lineWidth;
       pitchBufferCtx.lineCap = 'round';
 
       pitchBufferCtx.beginPath();
@@ -490,7 +486,6 @@ function drawPitchTracker(frameDelta) {
         pitchBufferCtx.moveTo(x - scrollPx - 1, lastPitchY);
         pitchBufferCtx.lineTo(x, currentY);
       } else {
-        // 新たにピッチ検出が始まった瞬間
         pitchBufferCtx.moveTo(x, currentY);
         pitchBufferCtx.lineTo(x + 1, currentY);
       }
