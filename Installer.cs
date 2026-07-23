@@ -550,6 +550,12 @@ namespace ManaResonanceInstall
             string targetDir = txtFolder.Text;
             try
             {
+                // アプリ実行中であれば確実にプロセスを終了させる
+                foreach (var proc in Process.GetProcessesByName("Mana Resonance"))
+                {
+                    try { proc.Kill(); proc.WaitForExit(2000); } catch { }
+                }
+
                 if (!Directory.Exists(targetDir)) Directory.CreateDirectory(targetDir);
 
                 string langFilePath = Path.Combine(targetDir, "language.txt");
@@ -569,9 +575,26 @@ namespace ManaResonanceInstall
                         progressBar.Value = 40;
                         await Task.Delay(300);
 
-                        ZipFile.ExtractToDirectory(tempZip, targetDir);
-                        File.Delete(tempZip);
+                        // 既存ファイルを強制上書き展開 (overwriteFiles: true)
+                        using (ZipArchive archive = ZipFile.OpenRead(tempZip))
+                        {
+                            foreach (ZipArchiveEntry entry in archive.Entries)
+                            {
+                                string destinationPath = Path.GetFullPath(Path.Combine(targetDir, entry.FullName));
+                                if (string.IsNullOrEmpty(entry.Name))
+                                {
+                                    Directory.CreateDirectory(destinationPath);
+                                }
+                                else
+                                {
+                                    string dir = Path.GetDirectoryName(destinationPath);
+                                    if (!Directory.Exists(dir)) Directory.CreateDirectory(dir);
+                                    entry.ExtractToFile(destinationPath, true);
+                                }
+                            }
+                        }
 
+                        File.Delete(tempZip);
                         progressBar.Value = 75;
                     }
                 }
@@ -636,7 +659,7 @@ namespace ManaResonanceInstall
                     if (key != null)
                     {
                         key.SetValue("DisplayName", "Mana Resonance");
-                        key.SetValue("DisplayVersion", "1.1.3");
+                        key.SetValue("DisplayVersion", "1.1.4");
                         key.SetValue("Publisher", "Mana Resonance Team");
                         key.SetValue("UninstallString", "\"" + Path.Combine(targetDir, "uninstaller.exe") + "\"");
                         key.SetValue("DisplayIcon", Path.Combine(targetDir, "Mana Resonance.exe"));

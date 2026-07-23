@@ -277,14 +277,14 @@ function downloadAndInstallUpdate(downloadUrl) {
       file.on('finish', () => {
         file.close(() => {
           console.log('アップデートインストーラーのダウンロードが完了しました:', tempSetupPath);
-          // PowerShell 経由で管理者権限 (RunAs) で起動し、現在のアプリを終了
-          const cmd = `powershell -Command "Start-Process '${tempSetupPath}' -Verb RunAs"`;
+          // PowerShell 経由で旧プロセスを解放し、管理者権限 (RunAs) で起動
+          const cmd = `powershell -Command "Start-Sleep -Milliseconds 800; Stop-Process -Name 'Mana Resonance' -Force -ErrorAction SilentlyContinue; Start-Process '${tempSetupPath}' -Verb RunAs"`;
           exec(cmd, (err) => {
             if (err) console.error('インストーラー起動エラー:', err);
           });
           setTimeout(() => {
             app.quit();
-          }, 1000);
+          }, 500);
         });
       });
     }).on('error', (err) => {
