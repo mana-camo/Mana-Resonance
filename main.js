@@ -81,46 +81,8 @@ app.on('window-all-closed', () => {
   }
 });
 
-let settingsWindow = null;
-
-function createSettingsWindow() {
-  if (settingsWindow) {
-    settingsWindow.focus();
-    return;
-  }
-
-  settingsWindow = new BrowserWindow({
-    width: 620,
-    height: 520,
-    resizable: false,
-    parent: mainWindow,
-    modal: false, // 独立した別ウィンドウ
-    frame: true,
-    backgroundColor: '#080b14',
-    icon: path.join(__dirname, 'icon.png'),
-    title: 'Mana Resonance - Settings',
-    webPreferences: {
-      nodeIntegration: true,
-      contextIsolation: false,
-      webSecurity: false
-    }
-  });
-
-  settingsWindow.loadFile('settings.html');
-  settingsWindow.setMenuBarVisibility(false);
-
-  settingsWindow.on('closed', () => {
-    settingsWindow = null;
-  });
-}
-
 let allowPrerelease = false;
 let hasCheckedUpdates = false;
-
-// 別ウィンドウで設定を開くIPC
-ipcMain.on('open-settings-window', () => {
-  createSettingsWindow();
-});
 
 // IPC経由でベータアップデートの許可設定を受信・保存
 ipcMain.on('set-allow-prerelease', (event, value) => {

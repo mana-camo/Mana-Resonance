@@ -10,7 +10,7 @@
 </head>
 <body class="overflow-hidden select-none p-0 m-0 h-screen w-screen box-border bg-[#020205]">
 
-  <!-- Liquid Glass Sample.txt より完全流用: SVG Distortion Filter -->
+  <!-- SVG Distortion Filter -->
   <svg width="0" height="0" style="position: absolute;">
     <defs>
       <filter id="glass-distortion" x="0%" y="0%" width="100%" height="100%">
@@ -37,15 +37,15 @@
     </defs>
   </svg>
 
-  <!-- メイン Liquid Glass アプリケーションフレーム (外枠丸みなし・ウィンドウ直配置) -->
+  <!-- メイン Liquid Glass アプリケーションフレーム -->
   <div class="app-window-frame flex flex-col h-full w-full relative">
 
     <div class="flex-1 flex overflow-hidden min-h-0">
 
-      <!-- A. 左スリムサイドバー -->
+      <!-- A. 左スリムサイドバー (ページ遷移ナビゲーション) -->
       <aside class="w-56 bg-black/70 border-r border-white/5 flex flex-col justify-between p-4 shrink-0 z-40">
         
-        <!-- 上部: ブランドロゴ ＆ メニュー -->
+        <!-- 上部: ブランドロゴ ＆ ナビゲーションメニュー -->
         <div class="space-y-6">
           <div class="flex items-center space-x-3 px-2 pt-2">
             <img src="icon.png" class="w-8 h-8 rounded-xl border border-white/20 object-cover shadow-lg shadow-purple-950/80" alt="Logo" onerror="this.onerror=null; this.outerHTML='<div class=\'w-8 h-8 rounded-xl bg-purple-600 flex items-center justify-center text-white font-bold\'>M</div>';">
@@ -55,31 +55,29 @@
             </div>
           </div>
 
+          <!-- ナビゲーションボタン (Live Analysis ↔ Settings ページ切替) -->
           <div class="space-y-4">
             <div>
-              <span class="text-[9px] font-extrabold text-slate-500 uppercase tracking-widest px-2.5 block mb-2">ANALYTICS</span>
-              <nav class="space-y-1">
-                <a href="#" class="nav-item-active flex items-center space-x-3 px-3 py-2 rounded-xl text-xs font-bold text-white transition-all">
-                  <svg class="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
-                  <span>Live Analysis</span>
-                </a>
+              <span id="nav-cat-title" class="text-[9px] font-extrabold text-slate-500 uppercase tracking-widest px-2.5 block mb-2">ANALYTICS</span>
+              <nav class="space-y-1.5">
+                <!-- 1. Live Analysis ページ切替ボタン -->
+                <button id="nav-btn-analytics" class="w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-xs font-bold text-white bg-purple-600/30 border border-purple-500/50 transition-all">
+                  <svg class="w-4 h-4 text-purple-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                  <span id="nav-txt-analytics">Live Analysis</span>
+                </button>
+
+                <!-- 2. Settings ページ切替ボタン -->
+                <button id="nav-btn-settings" class="w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-xs font-bold text-slate-400 hover:text-white hover:bg-white/5 border border-transparent transition-all">
+                  <svg class="w-4 h-4 text-slate-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                  <span id="nav-txt-settings">Settings</span>
+                </button>
               </nav>
             </div>
           </div>
         </div>
 
-        <!-- 下部: SETTINGS (旧BETA UPDATES部分をSETTINGSに変更) ＆ RECONNECT -->
+        <!-- 下部: RECONNECT ボタン -->
         <div class="space-y-2.5 pt-3 border-t border-white/5">
-          <!-- SETTINGS 設定ボタン -->
-          <button id="btn-open-settings" class="w-full flex items-center justify-between bg-black/80 hover:bg-white/5 border border-white/10 text-slate-300 rounded-xl p-2.5 text-xs font-bold transition-all">
-            <div class="flex items-center space-x-2">
-              <svg class="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
-              <span>SETTINGS</span>
-            </div>
-            <span class="text-[9px] bg-purple-900/60 text-purple-300 px-1.5 py-0.5 rounded font-mono">CONFIG</span>
-          </button>
-
-          <!-- RECONNECTボタン -->
           <button id="btn-reconnect" class="w-full flex items-center justify-center space-x-2 bg-purple-600/30 hover:bg-purple-600/45 border border-purple-500/50 text-purple-200 rounded-xl py-2.5 text-xs font-black transition-all active:scale-95">
             <svg class="w-4 h-4 text-purple-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
             <span>RECONNECT</span>
@@ -87,269 +85,274 @@
         </div>
       </aside>
 
-      <!-- B. 右メインアナリティクスエリア (スクロール可能) -->
-      <main class="flex-1 flex flex-col p-5 space-y-4 overflow-y-auto min-w-0">
+      <!-- B. 右メイン表示エリア (ページ切り替えコンテナ) -->
+      <main class="flex-1 flex flex-col min-w-0 relative overflow-hidden">
 
-        <!-- 1. メインヘッダー ＆ ドロップゾーン -->
-        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 shrink-0 pt-1">
-          <div>
-            <h2 class="text-2xl font-black tracking-tight text-white whitespace-nowrap">
-              Live <span class="font-light text-purple-300">Analytics</span>
-            </h2>
-          </div>
+        <!-- ===================================================================
+             VIEW 1: LIVE ANALYTICS 画面 (メイン解析ページ)
+             =================================================================== -->
+        <div id="view-analytics" class="flex-1 flex flex-col p-5 space-y-4 overflow-y-auto min-w-0">
 
-          <div class="flex items-center space-x-3">
-            <div id="drop-zone" class="flex items-center border border-white/15 bg-black/80 rounded-2xl px-4 py-2 hover:border-purple-400 hover:bg-purple-500/10 transition-all text-xs text-slate-300 font-semibold cursor-pointer whitespace-nowrap">
-              <svg class="w-4 h-4 mr-2 text-purple-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
-              Drop Audio / Video File
+          <!-- 1. メインヘッダー ＆ ドロップゾーン -->
+          <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 shrink-0 pt-1">
+            <div>
+              <h2 class="text-2xl font-black tracking-tight text-white whitespace-nowrap">
+                Live <span class="font-light text-purple-300">Analytics</span>
+              </h2>
             </div>
 
-            <div id="file-player-controls" class="hidden flex items-center space-x-3 bg-black/90 px-3.5 py-1.5 rounded-2xl border border-white/15">
-              <span id="file-name" class="text-xs font-bold text-purple-300 max-w-[100px] truncate">No File</span>
-              <button id="btn-play-pause" class="bg-purple-600 text-white rounded-lg px-2.5 py-1 text-xs font-bold">再生</button>
-              <button id="btn-stop" class="bg-slate-800 text-slate-300 rounded-lg px-2.5 py-1 text-xs font-bold">停止</button>
-              <span id="current-time" class="text-[10px] font-mono text-slate-400">0:00</span>
-              <input type="range" id="seek-bar" min="0" max="100" value="0" class="w-20 accent-purple-500 h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer">
-              <span id="duration-time" class="text-[10px] font-mono text-slate-400">0:00</span>
-              <button id="btn-clear-file" class="text-slate-500 hover:text-red-400 text-xs font-bold">✕</button>
+            <div class="flex items-center space-x-3">
+              <div id="drop-zone" class="flex items-center border border-white/15 bg-black/80 rounded-2xl px-4 py-2 hover:border-purple-400 hover:bg-purple-500/10 transition-all text-xs text-slate-300 font-semibold cursor-pointer whitespace-nowrap">
+                <svg class="w-4 h-4 mr-2 text-purple-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
+                Drop Audio / Video File
+              </div>
+
+              <div id="file-player-controls" class="hidden flex items-center space-x-3 bg-black/90 px-3.5 py-1.5 rounded-2xl border border-white/15">
+                <span id="file-name" class="text-xs font-bold text-purple-300 max-w-[100px] truncate">No File</span>
+                <button id="btn-play-pause" class="bg-purple-600 text-white rounded-lg px-2.5 py-1 text-xs font-bold">再生</button>
+                <button id="btn-stop" class="bg-slate-800 text-slate-300 rounded-lg px-2.5 py-1 text-xs font-bold">停止</button>
+                <span id="current-time" class="text-[10px] font-mono text-slate-400">0:00</span>
+                <input type="range" id="seek-bar" min="0" max="100" value="0" class="w-20 accent-purple-500 h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer">
+                <span id="duration-time" class="text-[10px] font-mono text-slate-400">0:00</span>
+                <button id="btn-clear-file" class="text-slate-500 hover:text-red-400 text-xs font-bold">✕</button>
+              </div>
             </div>
           </div>
+
+          <!-- 2. トップ KPI ステータスカード群 (8カラム) -->
+          <section class="grid grid-cols-2 md:grid-cols-8 gap-2 shrink-0">
+            
+            <div class="liquid-glass-card grid-mesh-bg p-2.5 flex flex-col justify-between h-[74px] overflow-hidden">
+              <span class="text-[9px] font-black text-slate-400 uppercase tracking-wider whitespace-nowrap truncate">Pitch (F0)</span>
+              <div class="my-auto">
+                <span id="pitch-freq" class="text-base font-black font-mono text-white tracking-tight truncate block leading-tight whitespace-nowrap">-- Hz</span>
+              </div>
+              <span id="pitch-note" class="text-[8px] font-mono font-bold text-purple-300 truncate block whitespace-nowrap">--</span>
+            </div>
+
+            <div class="liquid-glass-card grid-mesh-bg p-2.5 flex flex-col justify-between h-[74px] overflow-hidden">
+              <span class="text-[9px] font-black text-slate-400 uppercase tracking-wider whitespace-nowrap truncate">Pitch Tuner</span>
+              <div class="my-auto">
+                <span id="pitch-cents-display" class="text-xs font-black font-mono text-emerald-400 tracking-tight truncate block leading-tight whitespace-nowrap">--</span>
+              </div>
+              <span class="text-[8px] font-mono text-slate-500 truncate block whitespace-nowrap">Accuracy</span>
+            </div>
+
+            <div class="liquid-glass-card grid-mesh-bg p-2.5 flex flex-col justify-between h-[74px] overflow-hidden">
+              <span class="text-[9px] font-black text-slate-400 uppercase tracking-wider whitespace-nowrap truncate">BPM Tempo</span>
+              <div class="my-auto">
+                <span id="bpm-display" class="text-xs font-black font-mono text-purple-300 tracking-tight truncate block leading-tight whitespace-nowrap">-- BPM</span>
+              </div>
+              <span class="text-[8px] font-mono text-slate-500 truncate block whitespace-nowrap">Realtime Beat</span>
+            </div>
+
+            <div class="liquid-glass-card grid-mesh-bg p-2.5 flex flex-col justify-between h-[74px] overflow-hidden">
+              <span class="text-[9px] font-black text-slate-400 uppercase tracking-wider whitespace-nowrap truncate">Timbre</span>
+              <div class="my-auto">
+                <span id="timbre-display" class="text-[11px] font-black font-mono text-purple-200 truncate block leading-tight whitespace-nowrap">--</span>
+              </div>
+              <span class="text-[8px] font-mono text-slate-500 truncate block whitespace-nowrap">Formant F1/F2</span>
+            </div>
+
+            <div class="liquid-glass-card grid-mesh-bg p-2.5 flex flex-col justify-between h-[74px] overflow-hidden">
+              <span class="text-[9px] font-black text-slate-400 uppercase tracking-wider whitespace-nowrap truncate">Register</span>
+              <div class="flex space-x-0.5 my-auto">
+                <span id="reg-chest" class="reg-indicator flex-1 text-center text-[7px] bg-black/80 border border-white/10 text-slate-600 py-0.5 rounded font-black whitespace-nowrap truncate">CHEST</span>
+                <span id="reg-mix" class="reg-indicator flex-1 text-center text-[7px] bg-black/80 border border-white/10 text-slate-600 py-0.5 rounded font-black whitespace-nowrap truncate">MIX</span>
+                <span id="reg-head" class="reg-indicator flex-1 text-center text-[7px] bg-black/80 border border-white/10 text-slate-600 py-0.5 rounded font-black whitespace-nowrap truncate">HEAD</span>
+              </div>
+              <span class="text-[8px] font-mono text-slate-500 truncate block whitespace-nowrap">Voice Zone</span>
+            </div>
+
+            <div class="liquid-glass-card grid-mesh-bg p-2.5 flex flex-col justify-between h-[74px] overflow-hidden">
+              <div class="flex items-center justify-between">
+                <span class="text-[9px] font-black text-slate-400 uppercase tracking-wider whitespace-nowrap truncate">Vibrato</span>
+                <canvas id="canvas-vibrato-radar" class="w-4 h-4 bg-black rounded border border-white/10 shrink-0" width="16" height="16"></canvas>
+              </div>
+              <div id="vibrato-status" class="text-[9px] font-black text-slate-400 flex items-center space-x-1 my-auto whitespace-nowrap truncate">
+                <span class="w-1.5 h-1.5 rounded-full bg-slate-600 inline-block shrink-0" id="vibrato-dot"></span>
+                <span id="vibrato-text" class="truncate">OFF</span>
+              </div>
+              <span id="vibrato-details" class="text-[8px] font-mono text-purple-300 truncate block whitespace-nowrap">-- Hz/-- c</span>
+            </div>
+
+            <div class="liquid-glass-card grid-mesh-bg p-2.5 flex flex-col justify-between h-[74px] overflow-hidden">
+              <span class="text-[9px] font-black text-slate-400 uppercase tracking-wider whitespace-nowrap truncate">Chord / Key</span>
+              <div class="my-auto">
+                <span id="chord-display" class="text-xs font-black font-mono text-purple-300 truncate block leading-tight whitespace-nowrap">--</span>
+              </div>
+              <span id="key-display" class="text-[8px] font-mono font-semibold text-slate-400 truncate block whitespace-nowrap">Key: --</span>
+            </div>
+
+            <div class="liquid-glass-card grid-mesh-bg p-2.5 flex flex-col justify-between h-[74px] overflow-hidden">
+              <div class="flex items-center justify-between">
+                <span class="text-[9px] font-black text-slate-400 uppercase tracking-wider whitespace-nowrap truncate">Range</span>
+                <div class="flex space-x-0.5 shrink-0">
+                  <button id="btn-range-mode" class="text-[6.5px] bg-emerald-500/20 text-emerald-300 px-1 py-0.5 rounded font-bold font-mono">CONF</button>
+                  <button id="btn-reset-range" class="text-[6.5px] bg-white/10 text-slate-300 px-1 py-0.5 rounded font-bold">RST</button>
+                </div>
+              </div>
+              <div class="my-auto">
+                <span class="text-[11px] font-black font-mono text-emerald-400 truncate block whitespace-nowrap">
+                  <span id="range-min">--</span> ~ <span id="range-max">--</span>
+                </span>
+              </div>
+              <span id="range-span" class="text-[8px] font-mono text-slate-500 truncate block whitespace-nowrap">--</span>
+            </div>
+
+          </section>
+
+          <!-- 3. モニター3段縦並び エリア -->
+          <section class="flex-1 flex flex-col space-y-3 min-h-0">
+            
+            <div class="flex-1 liquid-glass-card p-3 flex flex-col min-h-[140px] grid-mesh-bg relative overflow-hidden">
+              <div class="flex items-center justify-between z-10 mb-1.5 shrink-0">
+                <span class="text-[11px] font-black uppercase tracking-wider text-purple-300 flex items-center">
+                  <span class="w-2 h-2 rounded-full bg-purple-500 mr-2 animate-pulse"></span>
+                  1. Companion Perspective (Spectrogram)
+                </span>
+                <span class="text-xs text-purple-400 font-mono font-bold" id="fps-counter">60 FPS</span>
+              </div>
+              <div class="flex-1 bg-black rounded-xl overflow-hidden border border-white/10 relative min-h-[90px]" id="container-spectrogram">
+                <canvas id="canvas-spectrogram" class="w-full h-full block absolute top-0 left-0"></canvas>
+              </div>
+            </div>
+
+            <div class="flex-1 liquid-glass-card p-3 flex flex-col min-h-[140px] grid-mesh-bg relative overflow-hidden">
+              <div class="flex items-center justify-between z-10 mb-1.5 shrink-0">
+                <span class="text-[11px] font-black uppercase tracking-wider text-purple-400 flex items-center">
+                  <span class="w-2 h-2 rounded-full bg-emerald-400 mr-2 animate-pulse"></span>
+                  2. Vocal Pitch Tracker Trajectory
+                </span>
+              </div>
+              <div class="flex-1 bg-black rounded-xl overflow-hidden border border-white/10 relative min-h-[90px]" id="container-pitch-tracker">
+                <canvas id="canvas-pitch-tracker" class="w-full h-full block absolute top-0 left-0"></canvas>
+              </div>
+            </div>
+
+            <div class="flex-1 liquid-glass-card p-3 flex flex-col min-h-[140px] grid-mesh-bg relative overflow-hidden">
+              <div class="flex items-center justify-between z-10 mb-1.5 shrink-0">
+                <span class="text-[11px] font-black uppercase tracking-wider text-slate-300 flex items-center">
+                  <span class="w-2 h-2 rounded-full bg-cyan-400 mr-2 animate-pulse"></span>
+                  3. Log Hz Spectrum (30Hz - 20kHz)
+                </span>
+              </div>
+              <div class="flex-1 bg-black rounded-xl overflow-hidden border border-white/10 relative min-h-[90px]" id="container-spectrum">
+                <canvas id="canvas-spectrum" class="w-full h-full block absolute top-0 left-0"></canvas>
+              </div>
+            </div>
+
+          </section>
+
+          <!-- 4. 3-Band Drum Analyzer -->
+          <section class="liquid-glass-card p-4 flex flex-col space-y-4 grid-mesh-bg shrink-0">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-black uppercase tracking-wider text-purple-300 flex items-center">
+                <span class="w-2 h-2 rounded-full bg-purple-500 mr-2 animate-pulse"></span>
+                4. 3-Band Drum-Beat Analyzer
+              </span>
+              <span id="beat-energy" class="text-xs font-mono font-bold text-purple-400">0%</span>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
+              <div class="flex flex-col items-center justify-center p-3 relative">
+                <div id="beat-pulse-outer" class="w-24 h-24 rounded-full border-2 border-purple-500/30 flex items-center justify-center transition-all duration-100">
+                  <div id="beat-pulse-inner" class="w-16 h-16 rounded-full bg-purple-600/30 border border-purple-400 flex flex-col items-center justify-center transition-all duration-75">
+                    <span class="text-[8px] font-bold text-slate-300">KICK PULSE</span>
+                    <span id="kick-peak-display" class="text-xs font-black font-mono text-purple-200">0%</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="md:col-span-2 space-y-2.5">
+                <div>
+                  <div class="flex justify-between text-[10px] font-mono mb-1">
+                    <span class="text-slate-400 font-bold">LOW (Kick / Bass: &lt;150Hz)</span>
+                    <span id="low-val" class="text-purple-300 font-bold">-100 dB</span>
+                  </div>
+                  <div class="w-full bg-black/60 h-2 rounded-full overflow-hidden border border-white/10">
+                    <div id="bar-low" class="bg-gradient-to-r from-purple-600 to-indigo-400 h-full w-0 transition-all duration-75"></div>
+                  </div>
+                </div>
+
+                <div>
+                  <div class="flex justify-between text-[10px] font-mono mb-1">
+                    <span class="text-slate-400 font-bold">MID (Snare / Vocal: 150Hz-2.5kHz)</span>
+                    <span id="mid-val" class="text-indigo-300 font-bold">-100 dB</span>
+                  </div>
+                  <div class="w-full bg-black/60 h-2 rounded-full overflow-hidden border border-white/10">
+                    <div id="bar-mid" class="bg-gradient-to-r from-indigo-500 to-pink-500 h-full w-0 transition-all duration-75"></div>
+                  </div>
+                </div>
+
+                <div>
+                  <div class="flex justify-between text-[10px] font-mono mb-1">
+                    <span class="text-slate-400 font-bold">HIGH (Hi-Hat / Cymbal: &gt;2.5kHz)</span>
+                    <span id="high-val" class="text-pink-300 font-bold">-100 dB</span>
+                  </div>
+                  <div class="w-full bg-black/60 h-2 rounded-full overflow-hidden border border-white/10">
+                    <div id="bar-high" class="bg-gradient-to-r from-pink-500 to-rose-400 h-full w-0 transition-all duration-75"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
         </div>
 
-        <!-- 2. トップ KPI ステータスカード群 (8カラム 完全改行防止・ガクガク根絶仕様) -->
-        <section class="grid grid-cols-2 md:grid-cols-8 gap-2 shrink-0">
+        <!-- ===================================================================
+             VIEW 2: SETTINGS 画面 (同ウィンドウ内 ページ切り替え)
+             =================================================================== -->
+        <div id="view-settings" class="hidden flex-1 flex flex-col p-8 space-y-6 overflow-y-auto min-w-0 bg-[#080b14]">
           
-          <!-- 1: Pitch F0 -->
-          <div class="liquid-glass-card grid-mesh-bg p-2.5 flex flex-col justify-between h-[74px] overflow-hidden">
-            <span class="text-[9px] font-black text-slate-400 uppercase tracking-wider whitespace-nowrap truncate">Pitch (F0)</span>
-            <div class="my-auto">
-              <span id="pitch-freq" class="text-base font-black font-mono text-white tracking-tight truncate block leading-tight whitespace-nowrap">-- Hz</span>
-            </div>
-            <span id="pitch-note" class="text-[8px] font-mono font-bold text-purple-300 truncate block whitespace-nowrap">--</span>
+          <div class="border-b border-white/10 pb-4">
+            <h2 id="settings-head-title" class="text-2xl font-black text-white flex items-center">
+              <svg class="w-6 h-6 mr-3 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path></svg>
+              APPLICATION SETTINGS
+            </h2>
+            <p id="settings-head-sub" class="text-xs text-slate-400 mt-1">Configure system options and user preference settings</p>
           </div>
 
-          <!-- 2: Pitch Tuner (改行防止完全修正) -->
-          <div class="liquid-glass-card grid-mesh-bg p-2.5 flex flex-col justify-between h-[74px] overflow-hidden">
-            <span class="text-[9px] font-black text-slate-400 uppercase tracking-wider whitespace-nowrap truncate">Pitch Tuner</span>
-            <div class="my-auto">
-              <span id="pitch-cents-display" class="text-xs font-black font-mono text-emerald-400 tracking-tight truncate block leading-tight whitespace-nowrap">--</span>
-            </div>
-            <span class="text-[8px] font-mono text-slate-500 truncate block whitespace-nowrap">Accuracy</span>
-          </div>
-
-          <!-- 3: BPM Meter -->
-          <div class="liquid-glass-card grid-mesh-bg p-2.5 flex flex-col justify-between h-[74px] overflow-hidden">
-            <span class="text-[9px] font-black text-slate-400 uppercase tracking-wider whitespace-nowrap truncate">BPM Tempo</span>
-            <div class="my-auto">
-              <span id="bpm-display" class="text-xs font-black font-mono text-purple-300 tracking-tight truncate block leading-tight whitespace-nowrap">-- BPM</span>
-            </div>
-            <span class="text-[8px] font-mono text-slate-500 truncate block whitespace-nowrap">Realtime Beat</span>
-          </div>
-
-          <!-- 4: Timbre -->
-          <div class="liquid-glass-card grid-mesh-bg p-2.5 flex flex-col justify-between h-[74px] overflow-hidden">
-            <span class="text-[9px] font-black text-slate-400 uppercase tracking-wider whitespace-nowrap truncate">Timbre</span>
-            <div class="my-auto">
-              <span id="timbre-display" class="text-[11px] font-black font-mono text-purple-200 truncate block leading-tight whitespace-nowrap">--</span>
-            </div>
-            <span class="text-[8px] font-mono text-slate-500 truncate block whitespace-nowrap">Formant F1/F2</span>
-          </div>
-
-          <!-- 5: Voice Register -->
-          <div class="liquid-glass-card grid-mesh-bg p-2.5 flex flex-col justify-between h-[74px] overflow-hidden">
-            <span class="text-[9px] font-black text-slate-400 uppercase tracking-wider whitespace-nowrap truncate">Register</span>
-            <div class="flex space-x-0.5 my-auto">
-              <span id="reg-chest" class="reg-indicator flex-1 text-center text-[7px] bg-black/80 border border-white/10 text-slate-600 py-0.5 rounded font-black whitespace-nowrap truncate">CHEST</span>
-              <span id="reg-mix" class="reg-indicator flex-1 text-center text-[7px] bg-black/80 border border-white/10 text-slate-600 py-0.5 rounded font-black whitespace-nowrap truncate">MIX</span>
-              <span id="reg-head" class="reg-indicator flex-1 text-center text-[7px] bg-black/80 border border-white/10 text-slate-600 py-0.5 rounded font-black whitespace-nowrap truncate">HEAD</span>
-            </div>
-            <span class="text-[8px] font-mono text-slate-500 truncate block whitespace-nowrap">Voice Zone</span>
-          </div>
-
-          <!-- 6: Vibrato -->
-          <div class="liquid-glass-card grid-mesh-bg p-2.5 flex flex-col justify-between h-[74px] overflow-hidden">
-            <div class="flex items-center justify-between">
-              <span class="text-[9px] font-black text-slate-400 uppercase tracking-wider whitespace-nowrap truncate">Vibrato</span>
-              <canvas id="canvas-vibrato-radar" class="w-4 h-4 bg-black rounded border border-white/10 shrink-0" width="16" height="16"></canvas>
-            </div>
-            <div id="vibrato-status" class="text-[9px] font-black text-slate-400 flex items-center space-x-1 my-auto whitespace-nowrap truncate">
-              <span class="w-1.5 h-1.5 rounded-full bg-slate-600 inline-block shrink-0" id="vibrato-dot"></span>
-              <span id="vibrato-text" class="truncate">OFF</span>
-            </div>
-            <span id="vibrato-details" class="text-[8px] font-mono text-purple-300 truncate block whitespace-nowrap">-- Hz/-- c</span>
-          </div>
-
-          <!-- 7: Chord & Key -->
-          <div class="liquid-glass-card grid-mesh-bg p-2.5 flex flex-col justify-between h-[74px] overflow-hidden">
-            <span class="text-[9px] font-black text-slate-400 uppercase tracking-wider whitespace-nowrap truncate">Chord / Key</span>
-            <div class="my-auto">
-              <span id="chord-display" class="text-xs font-black font-mono text-purple-300 truncate block leading-tight whitespace-nowrap">--</span>
-            </div>
-            <span id="key-display" class="text-[8px] font-mono font-semibold text-slate-400 truncate block whitespace-nowrap">Key: --</span>
-          </div>
-
-          <!-- 8: Vocal Range -->
-          <div class="liquid-glass-card grid-mesh-bg p-2.5 flex flex-col justify-between h-[74px] overflow-hidden">
-            <div class="flex items-center justify-between">
-              <span class="text-[9px] font-black text-slate-400 uppercase tracking-wider whitespace-nowrap truncate">Range</span>
-              <div class="flex space-x-0.5 shrink-0">
-                <button id="btn-range-mode" class="text-[6.5px] bg-emerald-500/20 text-emerald-300 px-1 py-0.5 rounded font-bold font-mono">CONF</button>
-                <button id="btn-reset-range" class="text-[6.5px] bg-white/10 text-slate-300 px-1 py-0.5 rounded font-bold">RST</button>
-              </div>
-            </div>
-            <div class="my-auto">
-              <span class="text-[11px] font-black font-mono text-emerald-400 truncate block whitespace-nowrap">
-                <span id="range-min">--</span> ~ <span id="range-max">--</span>
-              </span>
-            </div>
-            <span id="range-span" class="text-[8px] font-mono text-slate-500 truncate block whitespace-nowrap">--</span>
-          </div>
-
-        </section>
-
-        <!-- 3. モニター3段縦並び (- - -) エリア -->
-        <section class="flex-1 flex flex-col space-y-3 min-h-0">
-          
-          <!-- 1段目 (-): Companion Perspective -->
-          <div class="flex-1 liquid-glass-card p-3 flex flex-col min-h-[140px] grid-mesh-bg relative overflow-hidden">
-            <div class="flex items-center justify-between z-10 mb-1.5 shrink-0">
-              <span class="text-[11px] font-black uppercase tracking-wider text-purple-300 flex items-center">
-                <span class="w-2 h-2 rounded-full bg-purple-500 mr-2 animate-pulse"></span>
-                1. Companion Perspective (Spectrogram)
-              </span>
-              <span class="text-xs text-purple-400 font-mono font-bold" id="fps-counter">60 FPS</span>
-            </div>
-            <div class="flex-1 bg-black rounded-xl overflow-hidden border border-white/10 relative min-h-[90px]" id="container-spectrogram">
-              <canvas id="canvas-spectrogram" class="w-full h-full block absolute top-0 left-0"></canvas>
-            </div>
-          </div>
-
-          <!-- 2段目 (-): Vocal Pitch Tracker -->
-          <div class="flex-1 liquid-glass-card p-3 flex flex-col min-h-[140px] grid-mesh-bg relative overflow-hidden">
-            <div class="flex items-center justify-between z-10 mb-1.5 shrink-0">
-              <span class="text-[11px] font-black uppercase tracking-wider text-purple-400 flex items-center">
-                <span class="w-2 h-2 rounded-full bg-emerald-400 mr-2 animate-pulse"></span>
-                2. Vocal Pitch Tracker Trajectory
-              </span>
-            </div>
-            <div class="flex-1 bg-black rounded-xl overflow-hidden border border-white/10 relative min-h-[90px]" id="container-pitch-tracker">
-              <canvas id="canvas-pitch-tracker" class="w-full h-full block absolute top-0 left-0"></canvas>
-              <canvas id="canvas-particles" class="w-full h-full block absolute top-0 left-0 pointer-events-none"></canvas>
-            </div>
-          </div>
-
-          <!-- 3段目 (-): Log Hz Spectrum -->
-          <div class="flex-1 liquid-glass-card p-3 flex flex-col min-h-[140px] grid-mesh-bg relative overflow-hidden">
-            <div class="flex items-center justify-between z-10 mb-1.5 shrink-0">
-              <span class="text-[11px] font-black uppercase tracking-wider text-slate-300 flex items-center">
-                <span class="w-2 h-2 rounded-full bg-cyan-400 mr-2 animate-pulse"></span>
-                3. Log Hz Spectrum (30Hz - 20kHz)
-              </span>
-            </div>
-            <div class="flex-1 bg-black rounded-xl overflow-hidden border border-white/10 relative min-h-[90px]" id="container-spectrum">
-              <canvas id="canvas-spectrum" class="w-full h-full block absolute top-0 left-0"></canvas>
-            </div>
-          </div>
-
-        </section>
-
-        <!-- 4段目 (スクロールで出現): 3-BAND DRUM-BEAT ANALYZER -->
-        <section class="liquid-glass-card p-4 flex flex-col space-y-4 grid-mesh-bg shrink-0">
-          <div class="flex items-center justify-between">
-            <span class="text-xs font-black uppercase tracking-wider text-purple-300 flex items-center">
-              <span class="w-2 h-2 rounded-full bg-purple-500 mr-2 animate-pulse"></span>
-              4. 3-Band Drum-Beat Analyzer
-            </span>
-            <span id="beat-energy" class="text-xs font-mono font-bold text-purple-400">0%</span>
-          </div>
-
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
-            <div class="flex flex-col items-center justify-center p-3 relative">
-              <div id="beat-pulse-outer" class="w-24 h-24 rounded-full border-2 border-purple-500/30 flex items-center justify-center transition-all duration-100">
-                <div id="beat-pulse-inner" class="w-16 h-16 rounded-full bg-purple-600/30 border border-purple-400 flex flex-col items-center justify-center transition-all duration-75">
-                  <span class="text-[8px] font-bold text-slate-300">KICK PULSE</span>
-                  <span id="kick-peak-display" class="text-xs font-black font-mono text-purple-200">0%</span>
-                </div>
-              </div>
+          <div class="max-w-2xl space-y-5">
+            <!-- 1. 表示言語 (DISPLAY LANGUAGE) -->
+            <div class="liquid-glass-card p-5 space-y-2">
+              <label id="lbl-cfg-lang" class="block text-sm font-bold text-white uppercase tracking-wider">DISPLAY LANGUAGE / 表示言語</label>
+              <p id="desc-cfg-lang" class="text-xs text-slate-400 mb-2">Select the language for the user interface and setup wizard</p>
+              <select id="select-cfg-lang" class="w-full max-w-xs bg-black border border-white/20 text-purple-200 text-xs rounded-xl p-3 font-bold cursor-pointer outline-none focus:border-purple-500">
+                <option value="EN">English (Default)</option>
+                <option value="JA">日本語 (Japanese)</option>
+              </select>
             </div>
 
-            <div class="md:col-span-2 space-y-2.5">
+            <!-- 2. BETA UPDATES トグル -->
+            <div class="liquid-glass-card p-5 flex items-center justify-between">
               <div>
-                <div class="flex justify-between text-[10px] font-mono mb-1">
-                  <span class="text-slate-400 font-bold">LOW (Kick / Bass: &lt;150Hz)</span>
-                  <span id="low-val" class="text-purple-300 font-bold">-100 dB</span>
-                </div>
-                <div class="w-full bg-black/60 h-2 rounded-full overflow-hidden border border-white/10">
-                  <div id="bar-low" class="bg-gradient-to-r from-purple-600 to-indigo-400 h-full w-0 transition-all duration-75"></div>
-                </div>
+                <span id="lbl-cfg-beta" class="block text-sm font-bold text-white uppercase tracking-wider">BETA UPDATES</span>
+                <span id="desc-cfg-beta" class="text-xs text-slate-400">Receive early experimental feature updates automatically</span>
               </div>
+              <input type="checkbox" id="toggle-cfg-beta" class="rounded border-purple-800 text-purple-600 focus:ring-0 bg-black w-5 h-5 cursor-pointer">
+            </div>
 
-              <div>
-                <div class="flex justify-between text-[10px] font-mono mb-1">
-                  <span class="text-slate-400 font-bold">MID (Snare / Vocal: 150Hz-2.5kHz)</span>
-                  <span id="mid-val" class="text-indigo-300 font-bold">-100 dB</span>
-                </div>
-                <div class="w-full bg-black/60 h-2 rounded-full overflow-hidden border border-white/10">
-                  <div id="bar-mid" class="bg-gradient-to-r from-indigo-500 to-pink-500 h-full w-0 transition-all duration-75"></div>
-                </div>
-              </div>
+            <!-- 3. 将来拡張用設定スロット -->
+            <div class="liquid-glass-card p-5 space-y-2 opacity-70">
+              <span id="lbl-cfg-audio" class="block text-sm font-bold text-slate-300 uppercase tracking-wider">AUDIO GAIN & NOISE CUT (EXPANSION SLOT)</span>
+              <p id="desc-cfg-audio" class="text-xs text-slate-400">Automatic Noise Gate and Sensitivity Control</p>
+              <div class="text-xs text-purple-400 font-mono font-bold">STATUS: ACTIVE (DEFAULT AUTO)</div>
+            </div>
 
-              <div>
-                <div class="flex justify-between text-[10px] font-mono mb-1">
-                  <span class="text-slate-400 font-bold">HIGH (Hi-Hat / Cymbal: &gt;2.5kHz)</span>
-                  <span id="high-val" class="text-pink-300 font-bold">-100 dB</span>
-                </div>
-                <div class="w-full bg-black/60 h-2 rounded-full overflow-hidden border border-white/10">
-                  <div id="bar-high" class="bg-gradient-to-r from-pink-500 to-rose-400 h-full w-0 transition-all duration-75"></div>
-                </div>
-              </div>
+            <!-- 保存ボタン ＆ 保存完了メッセージ -->
+            <div class="pt-4 flex items-center space-x-4">
+              <button id="btn-save-cfg" class="bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs px-6 py-3 rounded-xl shadow-lg transition-all active:scale-95">
+                SAVE SETTINGS / 設定を保存
+              </button>
+              <span id="cfg-saved-msg" class="hidden text-xs font-bold text-emerald-400 animate-pulse">✓ Saved Successfully</span>
             </div>
           </div>
-        </section>
 
-        <!-- 非表示ボタン互換ダミー -->
-        <div class="hidden">
-          <button id="btn-close"></button>
-          <button id="btn-minimize"></button>
-          <button id="btn-maximize"></button>
         </div>
 
       </main>
 
-    </div>
-  </div>
-
-  <!-- SETTINGS 設定モーダル (BETA UPDATES + 将来拡張用設定スロット) -->
-  <div id="settings-modal" class="hidden fixed inset-0 z-50 bg-black/75 backdrop-blur-md flex items-center justify-center p-4">
-    <div class="bg-[#0b0e18] border border-white/15 rounded-3xl w-full max-w-md p-6 space-y-6 shadow-2xl">
-      <div class="flex items-center justify-between border-b border-white/10 pb-3">
-        <h3 class="text-base font-black text-white flex items-center">
-          <svg class="w-5 h-5 mr-2 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path></svg>
-          MANA RESONANCE SETTINGS
-        </h3>
-        <button id="btn-close-settings" class="text-slate-400 hover:text-white font-bold text-lg">✕</button>
-      </div>
-
-      <div class="space-y-4">
-        <!-- 1. BETA UPDATES トグル -->
-        <div class="bg-black/60 p-3.5 rounded-2xl border border-white/5 flex items-center justify-between">
-          <div>
-            <span class="block text-xs font-bold text-slate-200">BETA UPDATES</span>
-            <span class="text-[10px] text-slate-400">Receive early experimental feature updates</span>
-          </div>
-          <input type="checkbox" id="beta-update-toggle-modal" class="rounded border-purple-800 text-purple-600 focus:ring-0 bg-black w-4 h-4 cursor-pointer">
-        </div>
-
-        <!-- 2. 今後拡張可能な設定スロット -->
-        <div class="bg-black/60 p-3.5 rounded-2xl border border-white/5 space-y-1.5 opacity-60">
-          <span class="block text-xs font-bold text-slate-400">AUDIO GAIN SENSITIVITY (FUTURE SLOT)</span>
-          <div class="text-[10px] text-slate-500 font-mono">Auto Noise Reduction: ENABLED</div>
-        </div>
-      </div>
-
-      <div class="pt-2 flex justify-end">
-        <button id="btn-save-settings" class="bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs px-5 py-2 rounded-xl transition-all">CLOSE / 閉じる</button>
-      </div>
     </div>
   </div>
 
