@@ -2,8 +2,59 @@ const { ipcRenderer } = require('electron');
 const fs = require('fs');
 const path = require('path');
 
-const langFilePath = path.join(__dirname, 'language.txt');
+// --------------------------------------------------------------------------
+// 言語設定ファイルの保持・多重探索読み書き (Installer.cs との完全統一)
+// --------------------------------------------------------------------------
 let currentLang = 'EN';
+
+function findLanguageFilePath() {
+  const candidates = [
+    path.join(process.cwd(), 'language.txt'),
+    path.join(path.dirname(process.execPath), 'language.txt'),
+    path.join(__dirname, 'language.txt'),
+    path.join(__dirname, '..', 'language.txt'),
+    path.join(__dirname, '..', '..', 'language.txt')
+  ];
+
+  for (const p of candidates) {
+    try {
+      if (fs.existsSync(p)) return p;
+    } catch (e) {}
+  }
+  return path.join(path.dirname(process.execPath), 'language.txt');
+}
+
+function loadLanguage() {
+  try {
+    const targetPath = findLanguageFilePath();
+    if (fs.existsSync(targetPath)) {
+      const content = fs.readFileSync(targetPath, 'utf8').trim().toUpperCase();
+      if (content === 'JA' || content === 'EN') {
+        currentLang = content;
+      }
+    }
+  } catch (err) {
+    console.warn('Language read error:', err);
+  }
+}
+
+function saveLanguage(lang) {
+  currentLang = lang;
+  const candidates = [
+    path.join(process.cwd(), 'language.txt'),
+    path.join(path.dirname(process.execPath), 'language.txt'),
+    path.join(__dirname, 'language.txt'),
+    path.join(__dirname, '..', 'language.txt')
+  ];
+
+  for (const p of candidates) {
+    try {
+      fs.writeFileSync(p, lang, 'utf8');
+    } catch (err) {
+      // 一部ディレクトリの書き込み権限エラーを安全に無視
+    }
+  }
+}
 
 // 言語テキストマッピング
 const i18n = {
@@ -33,43 +84,32 @@ const i18n = {
   }
 };
 
-function loadLanguage() {
-  try {
-    if (fs.existsSync(langFilePath)) {
-      const content = fs.readFileSync(langFilePath, 'utf8').trim().toUpperCase();
-      if (content === 'JA' || content === 'EN') {
-        currentLang = content;
-      }
-    }
-  } catch (err) {
-    console.warn('Language read error:', err);
-  }
-}
-
-function saveLanguage(lang) {
-  currentLang = lang;
-  try {
-    fs.writeFileSync(langFilePath, lang, 'utf8');
-  } catch (err) {
-    console.warn('Language write error:', err);
-  }
-}
-
 function applyUI() {
   const dict = i18n[currentLang] || i18n.EN;
 
-  document.getElementById('title-settings').textContent = dict.title;
-  document.getElementById('sub-settings').textContent = dict.sub;
-  document.getElementById('lbl-lang').textContent = dict.lblLang;
-  document.getElementById('desc-lang').textContent = dict.descLang;
-  document.getElementById('lbl-beta').textContent = dict.lblBeta;
-  document.getElementById('desc-beta').textContent = dict.descBeta;
-  document.getElementById('lbl-audio').textContent = dict.lblAudio;
-  document.getElementById('btn-cancel').textContent = dict.btnCancel;
-  document.getElementById('btn-save').textContent = dict.btnSave;
-  document.getElementById('save-msg').textContent = dict.saved;
-
+  const titleElem = document.getElementById('title-settings');
+  const subElem = document.getElementById('sub-settings');
+  const lblLangElem = document.getElementById('lbl-lang');
+  const descLangElem = document.getElementById('desc-lang');
+  const lblBetaElem = document.getElementById('lbl-beta');
+  const descBetaElem = document.getElementById('desc-beta');
+  const lblAudioElem = document.getElementById('lbl-audio');
+  const btnCancelElem = document.getElementById('btn-cancel');
+  const btnSaveElem = document.getElementById('btn-save');
+  const saveMsgElem = document.getElementById('save-msg');
   const selectLang = document.getElementById('select-lang');
+
+  if (titleElem) titleElem.textContent = dict.title;
+  if (subElem) subElem.textContent = dict.sub;
+  if (lblLangElem) lblLangElem.textContent = dict.lblLang;
+  if (descLangElem) descLangElem.textContent = dict.descLang;
+  if (lblBetaElem) lblBetaElem.textContent = dict.lblBeta;
+  if (descBetaElem) descBetaElem.textContent = dict.descBeta;
+  if (lblAudioElem) lblAudioElem.textContent = dict.lblAudio;
+  if (btnCancelElem) btnCancelElem.textContent = dict.btnCancel;
+  if (btnSaveElem) btnSaveElem.textContent = dict.btnSave;
+  if (saveMsgElem) saveMsgElem.textContent = dict.saved;
+
   if (selectLang) selectLang.value = currentLang;
 }
 
@@ -101,6 +141,7 @@ window.addEventListener('DOMContentLoaded', () => {
     btnSave.addEventListener('click', () => {
       if (selectLang) {
         saveLanguage(selectLang.value);
+        ipcRenderer.send('language-changed', selectLang.value);
       }
       if (toggleBeta) {
         ipcRenderer.send('set-allow-prerelease', toggleBeta.checked);

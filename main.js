@@ -114,6 +114,9 @@ function createSettingsWindow() {
   });
 }
 
+let allowPrerelease = false;
+let hasCheckedUpdates = false;
+
 // 別ウィンドウで設定を開くIPC
 ipcMain.on('open-settings-window', () => {
   createSettingsWindow();
@@ -127,6 +130,14 @@ ipcMain.on('set-allow-prerelease', (event, value) => {
   if (!hasCheckedUpdates) {
     hasCheckedUpdates = true;
     setTimeout(checkForUpdates, 1500);
+  }
+});
+
+// 言語変更通知の受け取り
+ipcMain.on('language-changed', (event, lang) => {
+  console.log('言語設定が更新されました:', lang);
+  if (mainWindow && mainWindow.webContents) {
+    mainWindow.webContents.send('language-changed', lang);
   }
 });
 
