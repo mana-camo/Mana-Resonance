@@ -93,11 +93,11 @@ namespace ManaResonanceInstall
 
             defaultInstallPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "Mana Resonance");
             
-            currentLanguage = DetectLanguage();
+            currentLanguage = "EN"; // セットアップのデフォルト言語は英語(EN)
 
             InitializeComponent();
             
-            ApplyLanguage(currentLanguage);
+            ApplyLanguage("EN");
 
             if (isUpdateMode)
             {
@@ -564,6 +564,17 @@ namespace ManaResonanceInstall
                 string langFilePath = Path.Combine(targetDir, "language.txt");
                 File.WriteAllText(langFilePath, currentLanguage);
 
+                // アプリのAppData設定(config.json)にもセットアップ選択言語を100%同期保存
+                try
+                {
+                    string appDataDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "mana-resonance");
+                    if (!Directory.Exists(appDataDir)) Directory.CreateDirectory(appDataDir);
+                    string appDataConfig = Path.Combine(appDataDir, "config.json");
+                    string jsonContent = "{\n  \"language\": \"" + currentLanguage + "\",\n  \"betaUpdate\": false\n}";
+                    File.WriteAllText(appDataConfig, jsonContent);
+                }
+                catch { }
+
                 Assembly assembly = Assembly.GetExecutingAssembly();
                 using (Stream zipStream = assembly.GetManifestResourceStream("app.zip"))
                 {
@@ -662,7 +673,7 @@ namespace ManaResonanceInstall
                     if (key != null)
                     {
                         key.SetValue("DisplayName", "Mana Resonance");
-                        key.SetValue("DisplayVersion", "1.1.6");
+                        key.SetValue("DisplayVersion", "1.1.7");
                         key.SetValue("Publisher", "Mana Resonance Team");
                         key.SetValue("UninstallString", "\"" + Path.Combine(targetDir, "uninstaller.exe") + "\"");
                         key.SetValue("DisplayIcon", Path.Combine(targetDir, "Mana Resonance.exe"));
