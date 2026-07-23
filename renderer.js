@@ -179,29 +179,86 @@ let frameCount = 0;
 let lastFpsTime = performance.now();
 
 // --------------------------------------------------------------------------
-// 1. Audio Stream & Web Audio API
+// 高DPI ＆ コンテナ自動同期 Canvas リサイズ処理 (引き伸ばし修正)
 // --------------------------------------------------------------------------
+function resizeCanvases() {
+  if (canvasSpectrogram && canvasSpectrogram.parentElement) {
+    const rect = canvasSpectrogram.parentElement.getBoundingClientRect();
+    if (rect.width > 0 && rect.height > 0) {
+      canvasSpectrogram.width = Math.floor(rect.width);
+      canvasSpectrogram.height = Math.floor(rect.height);
+    }
+  }
+
+  if (canvasPitchTracker && canvasPitchTracker.parentElement) {
+    const rect = canvasPitchTracker.parentElement.getBoundingClientRect();
+    if (rect.width > 0 && rect.height > 0) {
+      canvasPitchTracker.width = Math.floor(rect.width);
+      canvasPitchTracker.height = Math.floor(rect.height);
+    }
+  }
+
+  if (canvasSpectrum && canvasSpectrum.parentElement) {
+    const rect = canvasSpectrum.parentElement.getBoundingClientRect();
+    if (rect.width > 0 && rect.height > 0) {
+      canvasSpectrum.width = Math.floor(rect.width);
+      canvasSpectrum.height = Math.floor(rect.height);
+    }
+  }
+}
+
+// --------------------------------------------------------------------------
+// 1. Audio Stream & Web Audio API (システム音声自動キャプチャ 1.0.8 準拠)
+// --------------------------------------------------------------------------
+let isReconnecting = false;
 async function startAudioStream() {
+  if (isReconnecting) return;
+  isReconnecting = true;
+
   try {
-    if (audioCtx) {
-      await audioCtx.close();
+    if (sourceNode) {
+      try { sourceNode.disconnect(); } catch (e) {}
+      sourceNode = null;
+    }
+    if (micStream) {
+      micStream.getTracks().forEach(track => {
+        try { track.stop(); } catch (e) {}
+      });
+      micStream = null;
     }
 
-    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    
-    micStream = await navigator.mediaDevices.getUserMedia({
-      audio: {
-        echoCancellation: false,
-        noiseSuppression: false,
-        autoGainControl: false
-      }
+    if (!audioCtx) {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if (audioCtx.state === 'suspended') {
+      await audioCtx.resume();
+    }
+
+    // 1.0.8 同等: getDisplayMedia を使用してシステム音声（デスクトップオーディオ）を直接キャプチャ
+    micStream = await navigator.mediaDevices.getDisplayMedia({
+      audio: true,
+      video: true
     });
+
+    // 不要なビデオトラックを即座に停止・解放
+    micStream.getVideoTracks().forEach(track => track.stop());
 
     sourceNode = audioCtx.createMediaStreamSource(micStream);
     setupAudioNodes(sourceNode);
+    console.log('システム音声ストリームの接続に成功しました。');
 
   } catch (err) {
-    console.error('Audio Stream Initialization Failed:', err);
+    console.error('システム音声の自動取得に失敗しました:', err);
+    // フォールバック: マイク入力
+    try {
+      micStream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }
+      });
+      sourceNode = audioCtx.createMediaStreamSource(micStream);
+      setupAudioNodes(sourceNode);
+    } catch (e) {}
+  } finally {
+    isReconnecting = false;
   }
 }
 
@@ -927,6 +984,11 @@ function setupUIEvents() {
     });
   }
 
+  // リサイズイベントの登録
+  window.addEventListener('resize', () => {
+    resizeCanvases();
+  });
+
   // ★ 同一ウィンドウ内 ページ切り替え (Live Analysis ↔ Settings) ★
   const navBtnAnalytics = document.getElementById('nav-btn-analytics');
   const navBtnSettings = document.getElementById('nav-btn-settings');
@@ -940,6 +1002,9 @@ function setupUIEvents() {
 
       navBtnAnalytics.className = 'w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-xs font-bold text-white bg-purple-600/30 border border-purple-500/50 transition-all';
       navBtnSettings.className = 'w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-xs font-bold text-slate-400 hover:text-white hover:bg-white/5 border border-transparent transition-all';
+
+      // Live Analytics 画面に切り替わったときに Canvas サイズを再同期
+      setTimeout(resizeCanvases, 50);
     });
 
     navBtnSettings.addEventListener('click', () => {
@@ -1023,6 +1088,7 @@ function updateLoop() {
 
 // アプリ起動
 window.addEventListener('DOMContentLoaded', async () => {
+  resizeCanvases();
   setupUIEvents();
   await startAudioStream();
   requestAnimationFrame(updateLoop);
