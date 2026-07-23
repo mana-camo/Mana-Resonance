@@ -46,16 +46,49 @@ namespace ManaResonanceUninstall
             string exePath = Process.GetCurrentProcess().MainModule.FileName;
             installDir = Path.GetDirectoryName(exePath);
 
-            // 言語設定ファイルの読込
-            string langFilePath = Path.Combine(installDir, "language.txt");
-            if (File.Exists(langFilePath))
-            {
-                try { language = File.ReadAllText(langFilePath).Trim().ToUpper(); } catch { }
-            }
+            language = DetectLanguage();
 
             InitializeComponent();
             ApplyLanguage();
             ShowStep(0);
+        }
+
+        private string DetectLanguage()
+        {
+            try
+            {
+                // 1. AppData 内の config.json を探索 (ユーザー設定最優先)
+                string appDataPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "mana-resonance", "config.json");
+                if (File.Exists(appDataPath))
+                {
+                    string json = File.ReadAllText(appDataPath);
+                    if (json.IndexOf("\"language\": \"JA\"", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                        json.IndexOf("\"language\":\"JA\"", StringComparison.OrdinalIgnoreCase) >= 0)
+                    {
+                        return "JA";
+                    }
+                    else if (json.IndexOf("\"language\": \"EN\"", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                             json.IndexOf("\"language\":\"EN\"", StringComparison.OrdinalIgnoreCase) >= 0)
+                    {
+                        return "EN";
+                    }
+                }
+            }
+            catch { }
+
+            try
+            {
+                // 2. language.txt の探索
+                string langFilePath = Path.Combine(installDir, "language.txt");
+                if (File.Exists(langFilePath))
+                {
+                    string content = File.ReadAllText(langFilePath).Trim().ToUpper();
+                    if (content == "JA" || content == "EN") return content;
+                }
+            }
+            catch { }
+
+            return "EN";
         }
 
         private void InitializeComponent()

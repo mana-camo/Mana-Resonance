@@ -942,8 +942,8 @@ function updateUIForLanguage() {
   const navTxtSettings = document.getElementById('nav-txt-settings');
 
   if (navCatTitle) navCatTitle.textContent = isJA ? '解析機能' : 'ANALYTICS';
-  if (navTxtAnalytics) navTxtAnalytics.textContent = isJA ? 'ライブ解析 (Live)' : 'Live Analysis';
-  if (navTxtSettings) navTxtSettings.textContent = isJA ? 'システム設定 (Settings)' : 'Settings';
+  if (navTxtAnalytics) navTxtAnalytics.textContent = isJA ? 'ライブ解析' : 'Live Analysis';
+  if (navTxtSettings) navTxtSettings.textContent = isJA ? 'システム設定' : 'Settings';
 
   const settingsHeadTitle = document.getElementById('settings-head-title');
   const settingsHeadSub = document.getElementById('settings-head-sub');

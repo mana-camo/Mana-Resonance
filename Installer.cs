@@ -92,9 +92,12 @@ namespace ManaResonanceInstall
             this.updateDownloadUrl = downloadUrl;
 
             defaultInstallPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "Mana Resonance");
+            
+            currentLanguage = DetectLanguage();
+
             InitializeComponent();
             
-            ApplyLanguage("EN"); // デフォルト英語・白テーマ
+            ApplyLanguage(currentLanguage);
 
             if (isUpdateMode)
             {
@@ -659,7 +662,7 @@ namespace ManaResonanceInstall
                     if (key != null)
                     {
                         key.SetValue("DisplayName", "Mana Resonance");
-                        key.SetValue("DisplayVersion", "1.1.4");
+                        key.SetValue("DisplayVersion", "1.1.5");
                         key.SetValue("Publisher", "Mana Resonance Team");
                         key.SetValue("UninstallString", "\"" + Path.Combine(targetDir, "uninstaller.exe") + "\"");
                         key.SetValue("DisplayIcon", Path.Combine(targetDir, "Mana Resonance.exe"));
@@ -697,6 +700,42 @@ namespace ManaResonanceInstall
                 MessageBox.Show("Update Failed: " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 this.Close();
             }
+        private static string DetectLanguage()
+        {
+            try
+            {
+                // 1. AppData 内の config.json を探索 (ユーザーの最新設定を最優先)
+                string appDataPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "mana-resonance", "config.json");
+                if (File.Exists(appDataPath))
+                {
+                    string json = File.ReadAllText(appDataPath);
+                    if (json.IndexOf("\"language\": \"JA\"", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                        json.IndexOf("\"language\":\"JA\"", StringComparison.OrdinalIgnoreCase) >= 0)
+                    {
+                        return "JA";
+                    }
+                    else if (json.IndexOf("\"language\": \"EN\"", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                             json.IndexOf("\"language\":\"EN\"", StringComparison.OrdinalIgnoreCase) >= 0)
+                    {
+                        return "EN";
+                    }
+                }
+            }
+            catch { }
+
+            try
+            {
+                // 2. language.txt の探索
+                string programFilesPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "Mana Resonance", "language.txt");
+                if (File.Exists(programFilesPath))
+                {
+                    string content = File.ReadAllText(programFilesPath).Trim().ToUpper();
+                    if (content == "JA" || content == "EN") return content;
+                }
+            }
+            catch { }
+
+            return "EN";
         }
 
         // ★ 自動UAC管理者権限昇格Main ★
