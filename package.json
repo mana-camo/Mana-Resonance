@@ -1,6 +1,6 @@
 {
   "name": "mana-resonance",
-  "version": "1.1.5",
+  "version": "1.1.6",
   "description": "Mana Resonance Desktop - Realtime Music & Multi-Band Analyzer",
   "main": "main.js",
   "scripts": {

@@ -214,26 +214,24 @@ function checkForUpdates() {
             asset = release.assets.find(a => a.name.endsWith('.zip') || a.name.endsWith('.dmg'));
           }
 
-          if (asset) {
-            if (process.platform === 'darwin') {
-              dialog.showMessageBox(mainWindow, {
-                type: 'info',
-                buttons: ['OK'],
-                title: 'アップデートのご案内',
-                message: `新しいバージョン (v${latestVersion}) が利用可能です。`
-              });
-            } else if (process.platform === 'win32') {
-              dialog.showMessageBox(mainWindow, {
-                type: 'info',
-                buttons: ['今すぐアップデート', '後で'],
-                title: 'アップデートのご案内',
-                message: `新しいバージョン (v${latestVersion}) が見つかりました。\nダウンロードして自動インストールを開始しますか？`
-              }).then((result) => {
-                if (result.response === 0) {
-                  downloadAndInstallUpdate(asset.browser_download_url);
-                }
-              });
-            }
+          if (process.platform === 'darwin') {
+            dialog.showMessageBox(mainWindow, {
+              type: 'info',
+              buttons: ['OK'],
+              title: 'アップデートのご案内',
+              message: `新しいバージョン (v${latestVersion}) が利用可能です。`
+            });
+          } else if (process.platform === 'win32') {
+            dialog.showMessageBox(mainWindow, {
+              type: 'info',
+              buttons: ['今すぐアップデート', '後で'],
+              title: 'アップデートのご案内',
+              message: `新しいバージョン (v${latestVersion}) が見つかりました。\nダウンロードページを開きますか？`
+            }).then((result) => {
+              if (result.response === 0) {
+                shell.openExternal(release.html_url);
+              }
+            });
           }
         }
       } catch (err) {
@@ -243,58 +241,6 @@ function checkForUpdates() {
   }).on('error', (err) => {
     console.error('アップデートの確認中にネットワークエラーが発生しました:', err.message);
   });
-}
-
-// 直ダウンロード＆全自動インストーラー起動
-function downloadAndInstallUpdate(downloadUrl) {
-  const tempSetupPath = path.join(os.tmpdir(), 'ManaResonanceSetup_Update.exe');
-
-  dialog.showMessageBox(mainWindow, {
-    type: 'info',
-    buttons: ['OK'],
-    title: 'アップデートのダウンロード',
-    message: '最新バージョンのインストーラーをダウンロードしています...\nダウンロード完了後、自動的にセットアップが起動します。'
-  });
-
-  const file = fs.createWriteStream(tempSetupPath);
-
-  const request = (url) => {
-    https.get(url, { headers: { 'User-Agent': 'Mozilla/5.0 Electron' } }, (response) => {
-      // GitHub Releases のリダイレクト (301, 302) 追従
-      if (response.statusCode === 301 || response.statusCode === 302) {
-        request(response.headers.location);
-        return;
-      }
-
-      if (response.statusCode !== 200) {
-        console.error('ダウンロードエラー:', response.statusCode);
-        shell.openExternal(downloadUrl);
-        return;
-      }
-
-      response.pipe(file);
-
-      file.on('finish', () => {
-        file.close(() => {
-          console.log('アップデートインストーラーのダウンロードが完了しました:', tempSetupPath);
-          // PowerShell 経由で旧プロセスを解放し、管理者権限 (RunAs) で起動
-          const cmd = `powershell -Command "Start-Sleep -Milliseconds 800; Stop-Process -Name 'Mana Resonance' -Force -ErrorAction SilentlyContinue; Start-Process '${tempSetupPath}' -Verb RunAs"`;
-          exec(cmd, (err) => {
-            if (err) console.error('インストーラー起動エラー:', err);
-          });
-          setTimeout(() => {
-            app.quit();
-          }, 500);
-        });
-      });
-    }).on('error', (err) => {
-      fs.unlink(tempSetupPath, () => {});
-      console.error('ダウンロード通信エラー:', err);
-      shell.openExternal(downloadUrl);
-    });
-  };
-
-  request(downloadUrl);
 }
 
 // バージョン比較ヘルパー
