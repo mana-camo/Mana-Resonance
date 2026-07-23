@@ -846,12 +846,12 @@ function drawSpectrum() {
     ctxSpectrum.lineWidth = 1.8;
     ctxSpectrum.stroke();
 
-    // ★ Peak Hold 保持 ＆ 浮遊ラベル表示 ★
+    // ★ Peak Hold 保持 ＆ 浮遊ラベル表示 (時間内により大きな音が来たら即更新) ★
     const nowTime = performance.now();
 
     if (peakIdx >= 0 && maxVal > 15) {
       const currentPeak = points[peakIdx];
-      if (!holdPeakPoint || (nowTime - lastPeakHoldTime > PEAK_HOLD_DURATION_MS)) {
+      if (!holdPeakPoint || (nowTime - lastPeakHoldTime > PEAK_HOLD_DURATION_MS) || (maxVal > holdPeakPoint.val)) {
         holdPeakPoint = {
           x: currentPeak.x,
           y: currentPeak.y,
@@ -1061,29 +1061,41 @@ function setupUIEvents() {
 }
 
 // --------------------------------------------------------------------------
-// メイン更新ループ
+// メイン更新ループ (90 FPS 固定レート制御)
 // --------------------------------------------------------------------------
-function updateLoop() {
-  const now = performance.now();
-  frameCount++;
-  if (now - lastFpsTime >= 1000) {
-    if (fpsCounter) fpsCounter.textContent = `${frameCount} FPS`;
-    frameCount = 0;
-    lastFpsTime = now;
-  }
+let lastRenderTime = performance.now();
+const TARGET_FPS = 90;
+const FRAME_INTERVAL = 1000 / TARGET_FPS; // 約11.11ms (90FPS)
 
-  analyzeVocalPitch();
-  analyzePitchAccuracy(lastValidF0);
-  analyzeFormants();
-  detectVibrato();
-  analyzeChordAndKey();
-  analyzeDrumBeats();
-
-  drawSpectrogram();
-  drawPitchTracker();
-  drawSpectrum();
-
+function updateLoop(timestamp) {
   requestAnimationFrame(updateLoop);
+
+  const now = timestamp || performance.now();
+  const elapsed = now - lastRenderTime;
+
+  // 90FPS (約11.11ms) の固定ペースでフレーム描画を更新
+  if (elapsed >= FRAME_INTERVAL - 0.5) {
+    lastRenderTime = now - (elapsed % FRAME_INTERVAL);
+
+    frameCount++;
+    if (now - lastFpsTime >= 1000) {
+      if (fpsCounter) fpsCounter.textContent = `${frameCount} FPS`;
+      frameCount = 0;
+      lastFpsTime = now;
+    }
+
+    analyzeVocalPitch();
+    analyzePitchAccuracy(lastValidF0);
+    analyzeFormants();
+    detectVibrato();
+    analyzeChordAndKey();
+    analyzeDrumBeats();
+
+    // 90FPS固定の滑らかな流れる速度
+    drawSpectrogram(1.5);
+    drawPitchTracker(1.5);
+    drawSpectrum();
+  }
 }
 
 // アプリ起動
