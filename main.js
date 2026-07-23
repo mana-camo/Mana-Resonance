@@ -222,30 +222,15 @@ function checkForUpdates() {
                 title: 'アップデートのご案内',
                 message: `新しいバージョン (v${latestVersion}) が利用可能です。`
               });
-              // Mac版は通知を出すだけでアプリは終了しない
             } else if (process.platform === 'win32') {
               dialog.showMessageBox(mainWindow, {
                 type: 'info',
                 buttons: ['今すぐアップデート', '後で'],
                 title: 'アップデートのご案内',
-                message: `新しいバージョン (v${latestVersion}) が見つかりました。`
+                message: `新しいバージョン (v${latestVersion}) が見つかりました。\nダウンロードして自動インストールを開始しますか？`
               }).then((result) => {
                 if (result.response === 0) {
-                  const installUpdater = 'C:\\Program Files\\Mana Resonance\\updater.exe';
-                  const localUpdater = path.join(path.dirname(process.execPath), 'updater.exe');
-                  const updaterPath = fs.existsSync(installUpdater) ? installUpdater : localUpdater;
-
-                  if (fs.existsSync(updaterPath)) {
-                    // PowerShell経由でUAC管理者昇格(RunAs)＆サイレント(/silent)で起動
-                    const cmd = `powershell -Command "Start-Process '${updaterPath}' -ArgumentList '/silent', '/update', '${asset.browser_download_url}' -Verb RunAs"`;
-                    exec(cmd, (err) => {
-                      if (err) console.error('UAC昇格起動エラー:', err);
-                    });
-                    app.quit();
-                  } else {
-                    shell.openExternal(release.html_url);
-                    app.quit();
-                  }
+                  downloadAndInstallUpdate(asset.browser_download_url);
                 }
               });
             }
@@ -258,6 +243,58 @@ function checkForUpdates() {
   }).on('error', (err) => {
     console.error('アップデートの確認中にネットワークエラーが発生しました:', err.message);
   });
+}
+
+// 直ダウンロード＆全自動インストーラー起動
+function downloadAndInstallUpdate(downloadUrl) {
+  const tempSetupPath = path.join(os.tmpdir(), 'ManaResonanceSetup_Update.exe');
+
+  dialog.showMessageBox(mainWindow, {
+    type: 'info',
+    buttons: ['OK'],
+    title: 'アップデートのダウンロード',
+    message: '最新バージョンのインストーラーをダウンロードしています...\nダウンロード完了後、自動的にセットアップが起動します。'
+  });
+
+  const file = fs.createWriteStream(tempSetupPath);
+
+  const request = (url) => {
+    https.get(url, { headers: { 'User-Agent': 'Mozilla/5.0 Electron' } }, (response) => {
+      // GitHub Releases のリダイレクト (301, 302) 追従
+      if (response.statusCode === 301 || response.statusCode === 302) {
+        request(response.headers.location);
+        return;
+      }
+
+      if (response.statusCode !== 200) {
+        console.error('ダウンロードエラー:', response.statusCode);
+        shell.openExternal(downloadUrl);
+        return;
+      }
+
+      response.pipe(file);
+
+      file.on('finish', () => {
+        file.close(() => {
+          console.log('アップデートインストーラーのダウンロードが完了しました:', tempSetupPath);
+          // PowerShell 経由で管理者権限 (RunAs) で起動し、現在のアプリを終了
+          const cmd = `powershell -Command "Start-Process '${tempSetupPath}' -Verb RunAs"`;
+          exec(cmd, (err) => {
+            if (err) console.error('インストーラー起動エラー:', err);
+          });
+          setTimeout(() => {
+            app.quit();
+          }, 1000);
+        });
+      });
+    }).on('error', (err) => {
+      fs.unlink(tempSetupPath, () => {});
+      console.error('ダウンロード通信エラー:', err);
+      shell.openExternal(downloadUrl);
+    });
+  };
+
+  request(downloadUrl);
 }
 
 // バージョン比較ヘルパー

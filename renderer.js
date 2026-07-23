@@ -24,32 +24,39 @@ function findCandidatePaths(filename) {
 }
 
 function loadAppConfig() {
-  // 1. config.json の探索
+  let hasUserConfigLang = false;
+
+  // 1. config.json の探索 (設定画面で選択・保存したユーザー設定を最優先)
   const configPaths = findCandidatePaths('config.json');
   for (const p of configPaths) {
     try {
       if (fs.existsSync(p)) {
         const raw = fs.readFileSync(p, 'utf8');
         const parsed = JSON.parse(raw);
-        if (parsed.language) currentAppLang = parsed.language.toUpperCase();
+        if (parsed.language) {
+          currentAppLang = parsed.language.toUpperCase();
+          hasUserConfigLang = true;
+        }
         if (typeof parsed.betaUpdate === 'boolean') currentAppBeta = parsed.betaUpdate;
         break;
       }
     } catch (e) {}
   }
 
-  // 2. language.txt の探索 (Installer.cs が作成した初期言語の確定取得)
-  const langPaths = findCandidatePaths('language.txt');
-  for (const p of langPaths) {
-    try {
-      if (fs.existsSync(p)) {
-        const langContent = fs.readFileSync(p, 'utf8').trim().toUpperCase();
-        if (langContent === 'JA' || langContent === 'EN') {
-          currentAppLang = langContent;
+  // 2. language.txt の探索 (config.json に言語設定がない場合のみインストーラー初期言語を使用)
+  if (!hasUserConfigLang) {
+    const langPaths = findCandidatePaths('language.txt');
+    for (const p of langPaths) {
+      try {
+        if (fs.existsSync(p)) {
+          const langContent = fs.readFileSync(p, 'utf8').trim().toUpperCase();
+          if (langContent === 'JA' || langContent === 'EN') {
+            currentAppLang = langContent;
+          }
+          break;
         }
-        break;
-      }
-    } catch (e) {}
+      } catch (e) {}
+    }
   }
 }
 
