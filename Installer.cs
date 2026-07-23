@@ -700,6 +700,8 @@ namespace ManaResonanceInstall
                 MessageBox.Show("Update Failed: " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 this.Close();
             }
+        }
+
         private static string DetectLanguage()
         {
             try
