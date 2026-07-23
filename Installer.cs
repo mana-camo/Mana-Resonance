@@ -636,7 +636,7 @@ namespace ManaResonanceInstall
                     if (key != null)
                     {
                         key.SetValue("DisplayName", "Mana Resonance");
-                        key.SetValue("DisplayVersion", "1.1.2");
+                        key.SetValue("DisplayVersion", "1.1.3");
                         key.SetValue("Publisher", "Mana Resonance Team");
                         key.SetValue("UninstallString", "\"" + Path.Combine(targetDir, "uninstaller.exe") + "\"");
                         key.SetValue("DisplayIcon", Path.Combine(targetDir, "Mana Resonance.exe"));

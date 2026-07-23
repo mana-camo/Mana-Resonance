@@ -14,12 +14,20 @@ let currentAppLang = 'EN';
 let currentAppBeta = false;
 
 function findCandidatePaths(filename) {
+  const os = require('os');
+  const appDataDir = path.join(os.homedir(), 'AppData', 'Roaming', 'mana-resonance');
+  try {
+    if (!fs.existsSync(appDataDir)) {
+      fs.mkdirSync(appDataDir, { recursive: true });
+    }
+  } catch (e) {}
+
   return [
+    path.join(appDataDir, filename),
     path.join(process.cwd(), filename),
     path.join(path.dirname(process.execPath), filename),
     path.join(__dirname, filename),
-    path.join(__dirname, '..', filename),
-    path.join(__dirname, '..', '..', filename)
+    path.join(__dirname, '..', filename)
   ];
 }
 
@@ -956,7 +964,7 @@ function updateUIForLanguage() {
   if (descCfgBeta) descCfgBeta.textContent = isJA ? '開発中の最新実験的機能アップデートを優先受信します' : 'Receive early experimental feature updates automatically';
   if (lblCfgAudio) lblCfgAudio.textContent = isJA ? 'オーディオ感度設定 (将来拡張スロット)' : 'AUDIO GAIN & NOISE CUT (EXPANSION SLOT)';
   if (descCfgAudio) descCfgAudio.textContent = isJA ? '自動ノイズゲートおよび感度コントロール' : 'Automatic Noise Gate and Sensitivity Control';
-  if (btnSaveCfg) btnSaveCfg.textContent = isJA ? '設定を保存する' : 'SAVE SETTINGS / 設定を保存';
+  if (btnSaveCfg) btnSaveCfg.textContent = isJA ? '設定を保存' : 'SAVE SETTINGS';
   if (cfgSavedMsg) cfgSavedMsg.textContent = isJA ? '✓ 保存が完了しました' : '✓ Saved Successfully';
 
   const selectCfgLang = document.getElementById('select-cfg-lang');
