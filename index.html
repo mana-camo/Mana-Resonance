@@ -51,7 +51,7 @@
             <img src="icon.png" class="w-8 h-8 rounded-xl border border-white/20 object-cover shadow-lg shadow-purple-950/80" alt="Logo" onerror="this.onerror=null; this.outerHTML='<div class=\'w-8 h-8 rounded-xl bg-purple-600 flex items-center justify-center text-white font-bold\'>M</div>';">
             <div>
               <h1 class="text-xs font-black tracking-wider text-white leading-tight">MANA<span class="text-purple-400">.RESONANCE</span></h1>
-              <p class="text-[9px] text-slate-500 font-mono font-semibold">STUDIO v1.1.7</p>
+              <p class="text-[9px] text-slate-500 font-mono font-semibold">STUDIO v1.2.0</p>
             </div>
           </div>
 
@@ -333,7 +333,31 @@
               <input type="checkbox" id="toggle-cfg-beta" class="rounded border-purple-800 text-purple-600 focus:ring-0 bg-black w-5 h-5 cursor-pointer">
             </div>
 
-            <!-- 3. 将来拡張用設定スロット -->
+            <!-- 3. デバッグ用: 強制ベータアップデート取得セクション -->
+            <div class="liquid-glass-card p-5 space-y-3 border border-amber-500/30 bg-amber-950/10">
+              <div class="flex items-center justify-between">
+                <div>
+                  <span id="lbl-cfg-debug" class="block text-sm font-bold text-amber-400 uppercase tracking-wider">DEBUG / DEVELOPER TOOLS</span>
+                  <span id="desc-cfg-debug" class="text-xs text-slate-400">Force download latest beta/release installer for debugging</span>
+                </div>
+                <button id="btn-debug-force-update" class="bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow transition-all active:scale-95 whitespace-nowrap">
+                  FORCE DOWNLOAD BETA
+                </button>
+              </div>
+
+              <!-- 進捗プログレスバー＆ステータス表示 -->
+              <div id="debug-progress-container" class="hidden space-y-1.5 pt-2">
+                <div class="flex justify-between text-[11px] font-mono font-bold">
+                  <span id="debug-status-text" class="text-amber-300">Downloading Update...</span>
+                  <span id="debug-percent-text" class="text-amber-400">0%</span>
+                </div>
+                <div class="w-full bg-black/60 h-2 rounded-full overflow-hidden border border-white/10">
+                  <div id="debug-progress-bar" class="bg-gradient-to-r from-amber-500 to-yellow-400 h-full w-0 transition-all duration-150"></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 4. 将来拡張用設定スロット -->
             <div class="liquid-glass-card p-5 space-y-2 opacity-70">
               <span id="lbl-cfg-audio" class="block text-sm font-bold text-slate-300 uppercase tracking-wider">AUDIO GAIN & NOISE CUT (EXPANSION SLOT)</span>
               <p id="desc-cfg-audio" class="text-xs text-slate-400">Automatic Noise Gate and Sensitivity Control</p>

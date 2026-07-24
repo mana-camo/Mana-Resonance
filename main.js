@@ -157,8 +157,18 @@ function setupMacMenu() {
   Menu.setApplicationMenu(menu);
 }
 
+// IPC経由でデバッグ用「最新ベータ強制ダウンロード」を受信
+ipcMain.on('force-download-beta-update', () => {
+  console.log('デバッグ用: 最新ベータの強制ダウンロードを開始します...');
+  fetchLatestReleaseAndDownload(true);
+});
+
 // GitHub Releases を使用したカスタム自動アップデート確認
 function checkForUpdates() {
+  fetchLatestReleaseAndDownload(false);
+}
+
+function fetchLatestReleaseAndDownload(isForceBeta = false) {
   const pkg = require('./package.json');
   const currentVersion = pkg.version;
   const updater = pkg.updater;
@@ -168,7 +178,8 @@ function checkForUpdates() {
     return;
   }
 
-  const pathUrl = allowPrerelease
+  // デバッグ強制またはベータ許可時は全リリースから最新取得、通常時はlatest
+  const pathUrl = (allowPrerelease || isForceBeta)
     ? `/repos/${updater.owner}/${updater.repo}/releases`
     : `/repos/${updater.owner}/${updater.repo}/releases/latest`;
 
@@ -187,60 +198,149 @@ function checkForUpdates() {
       try {
         if (res.statusCode !== 200) {
           console.log(`GitHub API返却エラー (ステータスコード: ${res.statusCode})`);
+          if (isForceBeta && mainWindow) {
+            mainWindow.webContents.send('update-download-progress', { status: 'error', message: `GitHub API Status ${res.statusCode}` });
+          }
           return;
         }
 
         let release = null;
-        if (allowPrerelease) {
+        if (allowPrerelease || isForceBeta) {
           const releases = JSON.parse(data);
           if (Array.isArray(releases) && releases.length > 0) {
-            release = releases[0]; // 最も新しいリリース（プレリリース含む）
+            release = releases[0];
           }
         } else {
           release = JSON.parse(data);
         }
 
-        if (!release) return;
-        const latestVersion = release.tag_name.replace(/^v/, ''); // 'v1.0.1' -> '1.0.1'
-
-        if (isNewerVersion(currentVersion, latestVersion)) {
-          console.log(`新しいバージョンが利用可能です: v${latestVersion} (現在: v${currentVersion})`);
-          
-          // 適切なダウンロードアセットを探す (Windowsの場合は app.zip または exe)
-          let asset = null;
-          if (process.platform === 'win32') {
-            asset = release.assets.find(a => a.name.endsWith('app.zip')) || release.assets.find(a => a.name.endsWith('.exe'));
-          } else if (process.platform === 'darwin') {
-            asset = release.assets.find(a => a.name.endsWith('.zip') || a.name.endsWith('.dmg'));
+        if (!release) {
+          if (isForceBeta && mainWindow) {
+            mainWindow.webContents.send('update-download-progress', { status: 'error', message: 'Release asset not found.' });
           }
+          return;
+        }
 
-          if (process.platform === 'darwin') {
-            dialog.showMessageBox(mainWindow, {
-              type: 'info',
-              buttons: ['OK'],
-              title: 'アップデートのご案内',
-              message: `新しいバージョン (v${latestVersion}) が利用可能です。`
-            });
-          } else if (process.platform === 'win32') {
+        const latestVersion = release.tag_name.replace(/^v/, '');
+
+        // 適切なアセット (.exe または Setup.exe) を取得
+        let asset = null;
+        if (process.platform === 'win32') {
+          asset = release.assets.find(a => a.name.endsWith('Setup.exe')) || 
+                  release.assets.find(a => a.name.endsWith('.exe'));
+        }
+
+        if (isForceBeta) {
+          // ★ デバッグ強制の場合：バージョン比較をスキップして即座に最新ベータをダウンロード ★
+          if (asset && asset.browser_download_url) {
+            downloadAndInstallSetup(asset.browser_download_url);
+          } else {
+            // アセットが直接ない場合はリリースURLを開く
+            shell.openExternal(release.html_url);
+            if (mainWindow) {
+              mainWindow.webContents.send('update-download-progress', { status: 'completed' });
+            }
+          }
+        } else if (isNewerVersion(currentVersion, latestVersion)) {
+          // 通常の自動アップデート検出時
+          console.log(`新しいバージョンが利用可能です: v${latestVersion} (現在: v${currentVersion})`);
+          if (process.platform === 'win32') {
             dialog.showMessageBox(mainWindow, {
               type: 'info',
               buttons: ['今すぐアップデート', '後で'],
               title: 'アップデートのご案内',
-              message: `新しいバージョン (v${latestVersion}) が見つかりました。\nダウンロードページを開きますか？`
+              message: `新しいバージョン (v${latestVersion}) が見つかりました。\nダウンロードして自動インストールを開始しますか？`
             }).then((result) => {
               if (result.response === 0) {
-                shell.openExternal(release.html_url);
+                if (asset && asset.browser_download_url) {
+                  downloadAndInstallSetup(asset.browser_download_url);
+                } else {
+                  shell.openExternal(release.html_url);
+                }
               }
             });
           }
         }
       } catch (err) {
         console.error('アップデート情報のパースに失敗しました:', err);
+        if (isForceBeta && mainWindow) {
+          mainWindow.webContents.send('update-download-progress', { status: 'error', message: err.message });
+        }
       }
     });
   }).on('error', (err) => {
-    console.error('アップデートの確認中にネットワークエラーが発生しました:', err.message);
+    console.error('アップデート確認通信エラー:', err.message);
+    if (isForceBeta && mainWindow) {
+      mainWindow.webContents.send('update-download-progress', { status: 'error', message: err.message });
+    }
   });
+}
+
+// 直ダウンロード＆プログレス配信＆管理者自動昇格起動エンジン
+function downloadAndInstallSetup(downloadUrl) {
+  const tempSetupPath = path.join(os.tmpdir(), 'ManaResonanceSetup_vUpdate.exe');
+  const file = fs.createWriteStream(tempSetupPath);
+
+  const request = (url) => {
+    https.get(url, { headers: { 'User-Agent': 'Mozilla/5.0 Electron' } }, (response) => {
+      // 301 / 302 リダイレクト自動追従
+      if (response.statusCode === 301 || response.statusCode === 302) {
+        request(response.headers.location);
+        return;
+      }
+
+      if (response.statusCode !== 200) {
+        console.error('ダウンロードレスポンスエラー:', response.statusCode);
+        if (mainWindow) mainWindow.webContents.send('update-download-progress', { status: 'error', message: `HTTP ${response.statusCode}` });
+        shell.openExternal(downloadUrl);
+        return;
+      }
+
+      const totalBytes = parseInt(response.headers['content-length'] || '0', 10);
+      let downloadedBytes = 0;
+
+      response.on('data', (chunk) => {
+        downloadedBytes += chunk.length;
+        const percent = totalBytes > 0 ? Math.round((downloadedBytes / totalBytes) * 100) : 0;
+        if (mainWindow) {
+          mainWindow.webContents.send('update-download-progress', {
+            status: 'downloading',
+            percent,
+            bytes: downloadedBytes,
+            total: totalBytes
+          });
+        }
+      });
+
+      response.pipe(file);
+
+      file.on('finish', () => {
+        file.close(() => {
+          console.log('アップデートインストーラーのダウンロードが完全完了しました:', tempSetupPath);
+          if (mainWindow) {
+            mainWindow.webContents.send('update-download-progress', { status: 'completed' });
+          }
+
+          // PowerShell で旧アプリプロセスを解放し、管理者権限 (-Verb RunAs) で最新セットアップを起動
+          const cmd = `powershell -Command "Start-Sleep -Milliseconds 600; Stop-Process -Name 'Mana Resonance' -Force -ErrorAction SilentlyContinue; Start-Process '${tempSetupPath}' -Verb RunAs"`;
+          exec(cmd, (err) => {
+            if (err) console.error('インストーラー起動エラー:', err);
+          });
+
+          setTimeout(() => {
+            app.quit();
+          }, 500);
+        });
+      });
+    }).on('error', (err) => {
+      fs.unlink(tempSetupPath, () => {});
+      console.error('ダウンロード通信エラー:', err);
+      if (mainWindow) mainWindow.webContents.send('update-download-progress', { status: 'error', message: err.message });
+      shell.openExternal(downloadUrl);
+    });
+  };
+
+  request(downloadUrl);
 }
 
 // バージョン比較ヘルパー

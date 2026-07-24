@@ -1065,6 +1065,60 @@ function setupUIEvents() {
     });
   }
 
+  // ★ デバッグ用: 最新ベータ強制ダウンロード＆アップデート処理 ★
+  const btnDebugForceUpdate = document.getElementById('btn-debug-force-update');
+  const debugProgressContainer = document.getElementById('debug-progress-container');
+  const debugProgressBar = document.getElementById('debug-progress-bar');
+  const debugPercentText = document.getElementById('debug-percent-text');
+  const debugStatusText = document.getElementById('debug-status-text');
+
+  if (btnDebugForceUpdate) {
+    btnDebugForceUpdate.addEventListener('click', () => {
+      if (debugProgressContainer) debugProgressContainer.classList.remove('hidden');
+      if (debugStatusText) debugStatusText.textContent = (currentAppLang === 'JA') ? '最新ベータを取得中...' : 'Fetching latest beta info...';
+      if (debugPercentText) debugPercentText.textContent = '0%';
+      if (debugProgressBar) debugProgressBar.style.width = '0%';
+
+      btnDebugForceUpdate.disabled = true;
+      btnDebugForceUpdate.classList.add('opacity-50', 'cursor-not-allowed');
+
+      // メインプロセスへ強制ベータダウンロードIPCを送信
+      ipcRenderer.send('force-download-beta-update');
+    });
+  }
+
+  // IPC経由でアップデートの進捗状況を受信
+  ipcRenderer.on('update-download-progress', (event, data) => {
+    if (debugProgressContainer) debugProgressContainer.classList.remove('hidden');
+
+    if (data.status === 'downloading') {
+      const percent = data.percent || 0;
+      if (debugPercentText) debugPercentText.textContent = `${percent}%`;
+      if (debugProgressBar) debugProgressBar.style.width = `${percent}%`;
+      if (debugStatusText) {
+        const mbRead = (data.bytes / (1024 * 1024)).toFixed(1);
+        const mbTotal = (data.total / (1024 * 1024)).toFixed(1);
+        debugStatusText.textContent = (currentAppLang === 'JA') 
+          ? `ダウンロード中... (${mbRead}MB / ${mbTotal}MB)` 
+          : `Downloading... (${mbRead}MB / ${mbTotal}MB)`;
+      }
+    } else if (data.status === 'completed') {
+      if (debugPercentText) debugPercentText.textContent = '100%';
+      if (debugProgressBar) debugProgressBar.style.width = '100%';
+      if (debugStatusText) {
+        debugStatusText.textContent = (currentAppLang === 'JA') 
+          ? '✓ ダウンロード完了。セットアップを自動起動します...' 
+          : '✓ Download Complete. Launching Setup...';
+      }
+    } else if (data.status === 'error') {
+      if (debugStatusText) debugStatusText.textContent = `❌ Error: ${data.message}`;
+      if (btnDebugForceUpdate) {
+        btnDebugForceUpdate.disabled = false;
+        btnDebugForceUpdate.classList.remove('opacity-50', 'cursor-not-allowed');
+      }
+    }
+  });
+
   if (dropZone) {
     dropZone.addEventListener('dragover', e => { e.preventDefault(); });
     dropZone.addEventListener('drop', e => { e.preventDefault(); });
