@@ -537,7 +537,7 @@ function analyzeChordAndKey() {
 }
 
 function analyzeDrumBeats() {
-  if (!lowAnalyser) return;
+  if (!lowAnalyser || !midAnalyser || !highAnalyser) return;
   const lowData = new Uint8Array(lowAnalyser.frequencyBinCount);
   const midData = new Uint8Array(midAnalyser.frequencyBinCount);
   const highData = new Uint8Array(highAnalyser.frequencyBinCount);
@@ -546,12 +546,15 @@ function analyzeDrumBeats() {
   midAnalyser.getByteFrequencyData(midData);
   highAnalyser.getByteFrequencyData(highData);
 
-  const getAvg = arr => arr.reduce((a, b) => a + b, 0) / arr.length;
-  const lowAvg = getAvg(lowData);
-  const midAvg = getAvg(midData);
-  const highAvg = getAvg(highData);
+  // ローパスフィルター(150Hz)により後半ビンが0になるため、低域は有効領域(最初の8ビン: 0~200Hz)から算出
+  const lowSlice = lowData.slice(0, 8);
+  const lowMax = Math.max(...lowSlice);
+  const lowAvg = lowSlice.reduce((a, b) => a + b, 0) / lowSlice.length;
 
-  const lowDb = Math.round(20 * Math.log10((lowAvg || 1) / 255));
+  const midAvg = midData.reduce((a, b) => a + b, 0) / midData.length;
+  const highAvg = highData.reduce((a, b) => a + b, 0) / highData.length;
+
+  const lowDb = Math.round(20 * Math.log10((lowMax || 1) / 255));
   const midDb = Math.round(20 * Math.log10((midAvg || 1) / 255));
   const highDb = Math.round(20 * Math.log10((highAvg || 1) / 255));
 
@@ -559,19 +562,21 @@ function analyzeDrumBeats() {
   if (midVal) midVal.textContent = `${midDb} dB`;
   if (highVal) highVal.textContent = `${highDb} dB`;
 
-  if (barLow) barLow.style.width = `${(lowAvg / 255) * 100}%`;
-  if (barMid) barMid.style.width = `${(midAvg / 255) * 100}%`;
-  if (barHigh) barHigh.style.width = `${(highAvg / 255) * 100}%`;
+  // 3バンドメーター描画
+  if (barLow) barLow.style.width = `${Math.min(100, Math.pow(lowMax / 255, 0.75) * 100)}%`;
+  if (barMid) barMid.style.width = `${Math.min(100, Math.pow(midAvg / 128, 0.75) * 100)}%`;
+  if (barHigh) barHigh.style.width = `${Math.min(100, Math.pow(highAvg / 128, 0.75) * 100)}%`;
 
-  const kickPct = Math.round((lowAvg / 255) * 100);
+  // Kick Pulse (0~100%) のダイナミック感度スケーリング
+  const kickPct = Math.min(100, Math.round(Math.pow(lowMax / 255, 0.65) * 100));
   if (kickPeakDisplay) kickPeakDisplay.textContent = `${kickPct}%`;
   if (beatEnergyText) beatEnergyText.textContent = `${kickPct}%`;
 
   if (beatPulseOuter && beatPulseInner) {
-    if (kickPct > 50) {
+    if (kickPct > 35) {
       beatPulseOuter.style.borderColor = 'rgba(168, 85, 247, 0.9)';
-      beatPulseOuter.style.transform = 'scale(1.08)';
-      beatPulseInner.style.backgroundColor = 'rgba(147, 51, 234, 0.7)';
+      beatPulseOuter.style.transform = 'scale(1.12)';
+      beatPulseInner.style.backgroundColor = 'rgba(147, 51, 234, 0.85)';
     } else {
       beatPulseOuter.style.borderColor = 'rgba(168, 85, 247, 0.3)';
       beatPulseOuter.style.transform = 'scale(1.0)';
@@ -580,7 +585,7 @@ function analyzeDrumBeats() {
   }
 
   const now = performance.now();
-  if (lowAvg - lastLowEnergy > 35 && now - lastBeatTime > 250) {
+  if (lowMax - lastLowEnergy > 25 && now - lastBeatTime > 220) {
     if (lastBeatTime > 0) {
       const interval = now - lastBeatTime;
       if (interval >= 300 && interval <= 1500) {
@@ -593,7 +598,7 @@ function analyzeDrumBeats() {
     }
     lastBeatTime = now;
   }
-  lastLowEnergy = lowAvg;
+  lastLowEnergy = lowMax;
 
   if (now - lastBeatTime > 3000) {
     beatTimes = [];
