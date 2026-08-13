@@ -406,6 +406,16 @@ namespace ManaResonanceUninstall
                         try { key.DeleteSubKeyTree("{7a2c3d1f-mana-4103-8bc1-auxdevice0001}"); } catch { }
                     }
                 }
+
+                // 3. SYSTEM Audio Class キーの削除
+                string audioClassPath = @"SYSTEM\CurrentControlSet\Control\Class\{4d36e96c-e325-11ce-bfba-08002be10318}";
+                using (RegistryKey classKey = Registry.LocalMachine.OpenSubKey(audioClassPath, true))
+                {
+                    if (classKey != null)
+                    {
+                        try { classKey.DeleteSubKeyTree("0099"); } catch { }
+                    }
+                }
             }
             catch { }
         }
