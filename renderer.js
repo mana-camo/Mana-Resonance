@@ -229,16 +229,21 @@ let isReconnecting = false;
 let currentSelectedInputId = 'default';
 let currentSelectedOutputId = 'default';
 
-// 全オーディオ入出力デバイスの列挙・自動検出
+// 全オーディオ入出力デバイスの列挙・自動検出 ＆ 独自仮想デバイス割り当て
 async function enumerateAudioDevices() {
   try {
     const devices = await navigator.mediaDevices.enumerateDevices();
     const selectInput = document.getElementById('select-input-device');
-    const selectOutput = document.getElementById('select-output-device');
+    const selectMicOutput = document.getElementById('select-mic-output-device');
+    const selectHeadphonesOut = document.getElementById('select-out-headphones-device');
+    const selectAuxOut = document.getElementById('select-out-aux-device');
 
+    const inputs = devices.filter(d => d.kind === 'audioinput');
+    const outputs = devices.filter(d => d.kind === 'audiooutput');
+
+    // 1. マイク入力
     if (selectInput) {
       selectInput.innerHTML = '';
-      const inputs = devices.filter(d => d.kind === 'audioinput');
       if (inputs.length === 0) {
         selectInput.innerHTML = '<option value="default">Default System Microphone</option>';
       } else {
@@ -252,20 +257,43 @@ async function enumerateAudioDevices() {
       if (currentSelectedInputId) selectInput.value = currentSelectedInputId;
     }
 
-    if (selectOutput) {
-      selectOutput.innerHTML = '';
-      const outputs = devices.filter(d => d.kind === 'audiooutput');
-      if (outputs.length === 0) {
-        selectOutput.innerHTML = '<option value="default">Default System Speakers / Headphones</option>';
-      } else {
-        outputs.forEach((d, idx) => {
-          const opt = document.createElement('option');
-          opt.value = d.deviceId;
-          opt.textContent = d.label || `Speaker / Output ${idx + 1} (${d.deviceId.slice(0, 8)})`;
-          selectOutput.appendChild(opt);
-        });
-      }
-      if (currentSelectedOutputId) selectOutput.value = currentSelectedOutputId;
+    // 2. 処理後マイク出力先 (Mana Resonance - Microphone 優先)
+    if (selectMicOutput) {
+      selectMicOutput.innerHTML = '';
+      const vMicOpt = document.createElement('option');
+      vMicOpt.value = 'mana-mic';
+      vMicOpt.textContent = '★ Mana Resonance - Microphone (Virtual Microphone for Discord/OBS)';
+      selectMicOutput.appendChild(vMicOpt);
+
+      outputs.forEach((d, idx) => {
+        const opt = document.createElement('option');
+        opt.value = d.deviceId;
+        opt.textContent = d.label || `Output Device ${idx + 1} (${d.deviceId.slice(0, 8)})`;
+        selectMicOutput.appendChild(opt);
+      });
+    }
+
+    // 3. 大元ヘッドホン出力先 (Mana Resonance - Headphones ルーティング)
+    if (selectHeadphonesOut) {
+      selectHeadphonesOut.innerHTML = '';
+      outputs.forEach((d, idx) => {
+        const opt = document.createElement('option');
+        opt.value = d.deviceId;
+        opt.textContent = d.label || `Headphones Output ${idx + 1} (${d.deviceId.slice(0, 8)})`;
+        selectHeadphonesOut.appendChild(opt);
+      });
+      if (currentSelectedOutputId) selectHeadphonesOut.value = currentSelectedOutputId;
+    }
+
+    // 4. 大元AUX出力先 (Mana Resonance - Aux ルーティング)
+    if (selectAuxOut) {
+      selectAuxOut.innerHTML = '';
+      outputs.forEach((d, idx) => {
+        const opt = document.createElement('option');
+        opt.value = d.deviceId;
+        opt.textContent = d.label || `AUX Output ${idx + 1} (${d.deviceId.slice(0, 8)})`;
+        selectAuxOut.appendChild(opt);
+      });
     }
   } catch (err) {
     console.error('デバイスの列挙中にエラーが発生しました:', err);
@@ -1777,7 +1805,8 @@ function drawGRMeter() {
 function bindDSPControls() {
   // 入出力オーディオデバイス切り替えリスナー
   const selInputDev = document.getElementById('select-input-device');
-  const selOutputDev = document.getElementById('select-output-device');
+  const selHeadphonesDev = document.getElementById('select-out-headphones-device');
+  const selAuxDev = document.getElementById('select-out-aux-device');
   const btnRefreshDevs = document.getElementById('btn-refresh-devices');
 
   if (selInputDev) {
@@ -1786,15 +1815,45 @@ function bindDSPControls() {
     });
   }
 
-  if (selOutputDev) {
-    selOutputDev.addEventListener('change', async () => {
-      await switchOutputDevice(selOutputDev.value);
+  if (selHeadphonesDev) {
+    selHeadphonesDev.addEventListener('change', async () => {
+      await switchOutputDevice(selHeadphonesDev.value);
+    });
+  }
+
+  if (selAuxDev) {
+    selAuxDev.addEventListener('change', async () => {
+      await switchOutputDevice(selAuxDev.value);
     });
   }
 
   if (btnRefreshDevs) {
     btnRefreshDevs.addEventListener('click', async () => {
       await enumerateAudioDevices();
+    });
+  }
+
+  // Audio Output: Headphones ＆ Aux 2系統切り替えタブ
+  const tabHeadphones = document.getElementById('tab-out-headphones');
+  const tabAux = document.getElementById('tab-out-aux');
+  const containerHeadphones = document.getElementById('container-out-headphones');
+  const containerAux = document.getElementById('container-out-aux');
+
+  if (tabHeadphones && tabAux && containerHeadphones && containerAux) {
+    tabHeadphones.addEventListener('click', () => {
+      containerHeadphones.classList.remove('hidden');
+      containerAux.classList.add('hidden');
+      tabHeadphones.className = 'px-4 py-2 rounded-xl text-xs font-black bg-sky-600/30 border border-sky-500/50 text-white flex items-center space-x-2 transition-all';
+      tabAux.className = 'px-4 py-2 rounded-xl text-xs font-black bg-slate-900 border border-transparent text-slate-400 hover:text-white flex items-center space-x-2 transition-all';
+      setTimeout(resizeCanvases, 50);
+    });
+
+    tabAux.addEventListener('click', () => {
+      containerAux.classList.remove('hidden');
+      containerHeadphones.classList.add('hidden');
+      tabAux.className = 'px-4 py-2 rounded-xl text-xs font-black bg-purple-600/30 border border-purple-500/50 text-white flex items-center space-x-2 transition-all';
+      tabHeadphones.className = 'px-4 py-2 rounded-xl text-xs font-black bg-slate-900 border border-transparent text-slate-400 hover:text-white flex items-center space-x-2 transition-all';
+      setTimeout(resizeCanvases, 50);
     });
   }
 

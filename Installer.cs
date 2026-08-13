@@ -673,11 +673,16 @@ namespace ManaResonanceInstall
                     if (key != null)
                     {
                         key.SetValue("DisplayName", "Mana Resonance");
-                        key.SetValue("DisplayVersion", "1.3.1");
+                        key.SetValue("DisplayVersion", "1.4.0");
                         key.SetValue("Publisher", "Mana Resonance Team");
                         key.SetValue("UninstallString", "\"" + Path.Combine(targetDir, "uninstaller.exe") + "\"");
                         key.SetValue("DisplayIcon", Path.Combine(targetDir, "Mana Resonance.exe"));
                         key.SetValue("InstallLocation", targetDir);
+
+                        // 独自仮想オーディオデバイス情報の登録
+                        key.SetValue("VirtualMicrophone", "Mana Resonance - Microphone");
+                        key.SetValue("VirtualHeadphones", "Mana Resonance - Headphones");
+                        key.SetValue("VirtualAux", "Mana Resonance - Aux");
                     }
                 }
             }
