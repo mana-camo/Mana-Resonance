@@ -51,7 +51,7 @@
             <img src="icon.png" class="w-8 h-8 rounded-xl border border-white/20 object-cover shadow-lg shadow-purple-950/80" alt="Logo" onerror="this.onerror=null; this.outerHTML='<div class=\'w-8 h-8 rounded-xl bg-purple-600 flex items-center justify-center text-white font-bold\'>M</div>';">
             <div>
               <h1 class="text-xs font-black tracking-wider text-white leading-tight">MANA<span class="text-purple-400">.RESONANCE</span></h1>
-              <p class="text-[9px] text-slate-500 font-mono font-semibold">STUDIO v1.4.0</p>
+              <p class="text-[9px] text-slate-500 font-mono font-semibold">STUDIO v1.4.1</p>
             </div>
           </div>
 
@@ -343,33 +343,26 @@
             </div>
           </div>
 
-          <!-- Sonarスタイル: マイク入出力ルーティングパネル -->
-          <div class="liquid-glass-card p-4 grid grid-cols-1 md:grid-cols-2 gap-4 border border-purple-500/30 bg-purple-950/20">
+          <!-- マイク入力デバイス選択パネル -->
+          <div class="liquid-glass-card p-4 border border-purple-500/30 bg-purple-950/20 flex flex-col md:flex-row md:items-center justify-between gap-4">
             <!-- 🎤 INPUT DEVICE (マイク入力) -->
-            <div class="space-y-1.5">
+            <div class="flex-1 space-y-1.5">
               <div class="flex items-center justify-between">
                 <label id="lbl-input-device" class="text-xs font-bold text-purple-300 uppercase tracking-wider flex items-center">
                   <svg class="w-4 h-4 mr-1.5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path></svg>
                   🎤 INPUT DEVICE (マイク入力)
                 </label>
+                <button id="btn-refresh-devices" class="text-[10px] text-slate-400 hover:text-purple-300 underline font-mono">🔄 Refresh Devices</button>
               </div>
               <select id="select-input-device" class="w-full bg-black/90 border border-white/20 text-purple-200 text-xs font-bold rounded-xl p-2.5 outline-none focus:border-purple-500 cursor-pointer">
                 <option value="default">Default System Microphone</option>
               </select>
             </div>
 
-            <!-- 🎙️ PROCESSED MIC OUTPUT (Discord / OBS / Zoom用処理後マイク出力先) -->
-            <div class="space-y-1.5">
-              <div class="flex items-center justify-between">
-                <label id="lbl-mic-output-device" class="text-xs font-bold text-emerald-300 uppercase tracking-wider flex items-center">
-                  <svg class="w-4 h-4 mr-1.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>
-                  🎙️ PROCESSED MIC OUTPUT (Discord / OBS用仮想マイク)
-                </label>
-                <button id="btn-refresh-devices" class="text-[10px] text-slate-400 hover:text-purple-300 underline font-mono">🔄 Refresh Devices</button>
-              </div>
-              <select id="select-mic-output-device" class="w-full bg-black/90 border border-white/20 text-emerald-200 text-xs font-bold rounded-xl p-2.5 outline-none focus:border-emerald-500 cursor-pointer">
-                <option value="mana-mic">Mana Resonance - Microphone (Virtual Microphone)</option>
-              </select>
+            <!-- 出力先固定バッジ表示 -->
+            <div class="flex items-center space-x-2 bg-emerald-950/40 border border-emerald-500/40 px-3.5 py-2.5 rounded-xl text-emerald-300 text-xs font-bold font-mono">
+              <svg class="w-4 h-4 text-emerald-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+              <span>Output: Mana Resonance - Microphone (Fixed)</span>
             </div>
           </div>
 

@@ -673,7 +673,7 @@ namespace ManaResonanceInstall
                     if (key != null)
                     {
                         key.SetValue("DisplayName", "Mana Resonance");
-                        key.SetValue("DisplayVersion", "1.4.0");
+                        key.SetValue("DisplayVersion", "1.4.1");
                         key.SetValue("Publisher", "Mana Resonance Team");
                         key.SetValue("UninstallString", "\"" + Path.Combine(targetDir, "uninstaller.exe") + "\"");
                         key.SetValue("DisplayIcon", Path.Combine(targetDir, "Mana Resonance.exe"));
@@ -683,6 +683,48 @@ namespace ManaResonanceInstall
                         key.SetValue("VirtualMicrophone", "Mana Resonance - Microphone");
                         key.SetValue("VirtualHeadphones", "Mana Resonance - Headphones");
                         key.SetValue("VirtualAux", "Mana Resonance - Aux");
+                    }
+                }
+
+                RegisterVirtualAudioDevices();
+            }
+            catch { }
+        }
+
+        private void RegisterVirtualAudioDevices()
+        {
+            try
+            {
+                // 1. 録音マイクデバイス: Mana Resonance - Microphone
+                string capturePath = @"SOFTWARE\Microsoft\Windows\CurrentVersion\MMDevices\Audio\Capture\{7a2c3d1f-mana-4101-8bc1-microphon001}\Properties";
+                using (RegistryKey key = Registry.LocalMachine.CreateSubKey(capturePath))
+                {
+                    if (key != null)
+                    {
+                        key.SetValue("{a45c254e-df1c-4efd-8020-67d146a850e0},2", "Mana Resonance - Microphone", RegistryValueKind.String);
+                        key.SetValue("{b3f8f860-43a1-456b-8e2b-570f7d016549},2", "Mana Resonance Virtual Microphone Device", RegistryValueKind.String);
+                    }
+                }
+
+                // 2. 再生スピーカー/ヘッドホンデバイス: Mana Resonance - Headphones
+                string renderHpPath = @"SOFTWARE\Microsoft\Windows\CurrentVersion\MMDevices\Audio\Render\{7a2c3d1f-mana-4102-8bc1-headphone001}\Properties";
+                using (RegistryKey key = Registry.LocalMachine.CreateSubKey(renderHpPath))
+                {
+                    if (key != null)
+                    {
+                        key.SetValue("{a45c254e-df1c-4efd-8020-67d146a850e0},2", "Mana Resonance - Headphones", RegistryValueKind.String);
+                        key.SetValue("{b3f8f860-43a1-456b-8e2b-570f7d016549},2", "Mana Resonance Virtual Headphones Device", RegistryValueKind.String);
+                    }
+                }
+
+                // 3. 再生スピーカー/AUXデバイス: Mana Resonance - Aux
+                string renderAuxPath = @"SOFTWARE\Microsoft\Windows\CurrentVersion\MMDevices\Audio\Render\{7a2c3d1f-mana-4103-8bc1-auxdevice0001}\Properties";
+                using (RegistryKey key = Registry.LocalMachine.CreateSubKey(renderAuxPath))
+                {
+                    if (key != null)
+                    {
+                        key.SetValue("{a45c254e-df1c-4efd-8020-67d146a850e0},2", "Mana Resonance - Aux", RegistryValueKind.String);
+                        key.SetValue("{b3f8f860-43a1-456b-8e2b-570f7d016549},2", "Mana Resonance Virtual Aux Device", RegistryValueKind.String);
                     }
                 }
             }

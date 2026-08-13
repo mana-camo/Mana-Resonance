@@ -234,14 +234,13 @@ async function enumerateAudioDevices() {
   try {
     const devices = await navigator.mediaDevices.enumerateDevices();
     const selectInput = document.getElementById('select-input-device');
-    const selectMicOutput = document.getElementById('select-mic-output-device');
     const selectHeadphonesOut = document.getElementById('select-out-headphones-device');
     const selectAuxOut = document.getElementById('select-out-aux-device');
 
     const inputs = devices.filter(d => d.kind === 'audioinput');
     const outputs = devices.filter(d => d.kind === 'audiooutput');
 
-    // 1. マイク入力
+    // 1. マイク入力 (マイク出力は Mana Resonance - Microphone に固定)
     if (selectInput) {
       selectInput.innerHTML = '';
       if (inputs.length === 0) {
@@ -255,22 +254,6 @@ async function enumerateAudioDevices() {
         });
       }
       if (currentSelectedInputId) selectInput.value = currentSelectedInputId;
-    }
-
-    // 2. 処理後マイク出力先 (Mana Resonance - Microphone 優先)
-    if (selectMicOutput) {
-      selectMicOutput.innerHTML = '';
-      const vMicOpt = document.createElement('option');
-      vMicOpt.value = 'mana-mic';
-      vMicOpt.textContent = '★ Mana Resonance - Microphone (Virtual Microphone for Discord/OBS)';
-      selectMicOutput.appendChild(vMicOpt);
-
-      outputs.forEach((d, idx) => {
-        const opt = document.createElement('option');
-        opt.value = d.deviceId;
-        opt.textContent = d.label || `Output Device ${idx + 1} (${d.deviceId.slice(0, 8)})`;
-        selectMicOutput.appendChild(opt);
-      });
     }
 
     // 3. 大元ヘッドホン出力先 (Mana Resonance - Headphones ルーティング)

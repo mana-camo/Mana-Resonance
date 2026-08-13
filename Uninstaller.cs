@@ -361,6 +361,9 @@ namespace ManaResonanceUninstall
                 }
                 catch { }
 
+                // 仮想オーディオデバイスのエンドポイントキー一括削除
+                RemoveVirtualAudioDevices();
+
                 progressBar.Value = 75;
                 await Task.Delay(400);
 
@@ -377,6 +380,34 @@ namespace ManaResonanceUninstall
                 MessageBox.Show((language == "JA" ? "アンインストール中にエラーが発生しました:\n" : "Uninstallation error:\n") + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 this.Close();
             }
+        }
+
+        private void RemoveVirtualAudioDevices()
+        {
+            try
+            {
+                // 1. 録音マイクデバイスキーの削除
+                string capturePath = @"SOFTWARE\Microsoft\Windows\CurrentVersion\MMDevices\Audio\Capture";
+                using (RegistryKey key = Registry.LocalMachine.OpenSubKey(capturePath, true))
+                {
+                    if (key != null)
+                    {
+                        try { key.DeleteSubKeyTree("{7a2c3d1f-mana-4101-8bc1-microphon001}"); } catch { }
+                    }
+                }
+
+                // 2. 再生ヘッドホンデバイスキーの削除
+                string renderPath = @"SOFTWARE\Microsoft\Windows\CurrentVersion\MMDevices\Audio\Render";
+                using (RegistryKey key = Registry.LocalMachine.OpenSubKey(renderPath, true))
+                {
+                    if (key != null)
+                    {
+                        try { key.DeleteSubKeyTree("{7a2c3d1f-mana-4102-8bc1-headphone001}"); } catch { }
+                        try { key.DeleteSubKeyTree("{7a2c3d1f-mana-4103-8bc1-auxdevice0001}"); } catch { }
+                    }
+                }
+            }
+            catch { }
         }
 
         private void CleanupSelfAndExit()
