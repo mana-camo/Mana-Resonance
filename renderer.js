@@ -226,22 +226,94 @@ function resizeCanvases() {
 // 1. Audio Stream & Web Audio API (システム音声自動キャプチャ 1.0.8 準拠)
 // --------------------------------------------------------------------------
 let isReconnecting = false;
+let currentSelectedInputId = 'default';
+let currentSelectedOutputId = 'default';
+
+// 全オーディオ入出力デバイスの列挙・自動検出
+async function enumerateAudioDevices() {
+  try {
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const selectInput = document.getElementById('select-input-device');
+    const selectOutput = document.getElementById('select-output-device');
+
+    if (selectInput) {
+      selectInput.innerHTML = '';
+      const inputs = devices.filter(d => d.kind === 'audioinput');
+      if (inputs.length === 0) {
+        selectInput.innerHTML = '<option value="default">Default System Microphone</option>';
+      } else {
+        inputs.forEach((d, idx) => {
+          const opt = document.createElement('option');
+          opt.value = d.deviceId;
+          opt.textContent = d.label || `Microphone ${idx + 1} (${d.deviceId.slice(0, 8)})`;
+          selectInput.appendChild(opt);
+        });
+      }
+      if (currentSelectedInputId) selectInput.value = currentSelectedInputId;
+    }
+
+    if (selectOutput) {
+      selectOutput.innerHTML = '';
+      const outputs = devices.filter(d => d.kind === 'audiooutput');
+      if (outputs.length === 0) {
+        selectOutput.innerHTML = '<option value="default">Default System Speakers / Headphones</option>';
+      } else {
+        outputs.forEach((d, idx) => {
+          const opt = document.createElement('option');
+          opt.value = d.deviceId;
+          opt.textContent = d.label || `Speaker / Output ${idx + 1} (${d.deviceId.slice(0, 8)})`;
+          selectOutput.appendChild(opt);
+        });
+      }
+      if (currentSelectedOutputId) selectOutput.value = currentSelectedOutputId;
+    }
+  } catch (err) {
+    console.error('デバイスの列挙中にエラーが発生しました:', err);
+  }
+}
+
+// 入力マイクデバイスの即時切り替え
+async function switchInputDevice(deviceId) {
+  currentSelectedInputId = deviceId;
+  try {
+    if (micStream) {
+      micStream.getTracks().forEach(track => track.stop());
+    }
+
+    const constraints = (deviceId === 'default' || !deviceId)
+      ? { audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } }
+      : { audio: { deviceId: { exact: deviceId }, echoCancellation: false, noiseSuppression: false, autoGainControl: false } };
+
+    micStream = await navigator.mediaDevices.getUserMedia(constraints);
+
+    if (audioCtx) {
+      sourceNode = audioCtx.createMediaStreamSource(micStream);
+      setupAudioNodes(sourceNode);
+      console.log('入力マイクデバイスを切り替えました:', deviceId);
+    }
+  } catch (err) {
+    console.error('入力マイクの切り替えに失敗しました:', err);
+  }
+}
+
+// 出力スピーカー/ヘッドホン/仮想オーディオデバイスへの即時ルーティング (setSinkId)
+async function switchOutputDevice(deviceId) {
+  currentSelectedOutputId = deviceId;
+  try {
+    if (audioCtx && typeof audioCtx.setSinkId === 'function') {
+      await audioCtx.setSinkId(deviceId === 'default' ? '' : deviceId);
+      console.log('大元のアウトプット出力デバイスを切り替えました:', deviceId);
+    }
+  } catch (err) {
+    console.error('出力デバイスへの setSinkId ルーティングに失敗しました:', err);
+  }
+}
+
 async function startAudioStream() {
   if (isReconnecting) return;
   isReconnecting = true;
 
   try {
-    if (sourceNode) {
-      try { sourceNode.disconnect(); } catch (e) {}
-      sourceNode = null;
-    }
-    if (micStream) {
-      micStream.getTracks().forEach(track => {
-        try { track.stop(); } catch (e) {}
-      });
-      micStream = null;
-    }
-
     if (!audioCtx) {
       audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     }
@@ -249,29 +321,23 @@ async function startAudioStream() {
       await audioCtx.resume();
     }
 
-    // 1.0.8 同等: getDisplayMedia を使用してシステム音声（デスクトップオーディオ）を直接キャプチャ
-    micStream = await navigator.mediaDevices.getDisplayMedia({
-      audio: true,
-      video: true
-    });
+    if (currentSelectedInputId && currentSelectedInputId !== 'default') {
+      await switchInputDevice(currentSelectedInputId);
+    } else {
+      // 1.0.8 同等: getDisplayMedia を使用してシステム音声（デスクトップオーディオ）を直接キャプチャ
+      try {
+        micStream = await navigator.mediaDevices.getDisplayMedia({ audio: true, video: true });
+        micStream.getVideoTracks().forEach(track => track.stop());
+        sourceNode = audioCtx.createMediaStreamSource(micStream);
+        setupAudioNodes(sourceNode);
+      } catch (e) {
+        await switchInputDevice('default');
+      }
+    }
 
-    // 不要なビデオトラックを即座に停止・解放
-    micStream.getVideoTracks().forEach(track => track.stop());
-
-    sourceNode = audioCtx.createMediaStreamSource(micStream);
-    setupAudioNodes(sourceNode);
-    console.log('システム音声ストリームの接続に成功しました。');
-
+    await enumerateAudioDevices();
   } catch (err) {
     console.error('システム音声の自動取得に失敗しました:', err);
-    // フォールバック: マイク入力
-    try {
-      micStream = await navigator.mediaDevices.getUserMedia({
-        audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }
-      });
-      sourceNode = audioCtx.createMediaStreamSource(micStream);
-      setupAudioNodes(sourceNode);
-    } catch (e) {}
   } finally {
     isReconnecting = false;
   }
@@ -1709,6 +1775,29 @@ function drawGRMeter() {
 // ★ UI BINDINGS: DYNAMIC BAND ADD/DELETE, SLIDERS, PRESETS ★
 // --------------------------------------------------------------------------
 function bindDSPControls() {
+  // 入出力オーディオデバイス切り替えリスナー
+  const selInputDev = document.getElementById('select-input-device');
+  const selOutputDev = document.getElementById('select-output-device');
+  const btnRefreshDevs = document.getElementById('btn-refresh-devices');
+
+  if (selInputDev) {
+    selInputDev.addEventListener('change', async () => {
+      await switchInputDevice(selInputDev.value);
+    });
+  }
+
+  if (selOutputDev) {
+    selOutputDev.addEventListener('change', async () => {
+      await switchOutputDevice(selOutputDev.value);
+    });
+  }
+
+  if (btnRefreshDevs) {
+    btnRefreshDevs.addEventListener('click', async () => {
+      await enumerateAudioDevices();
+    });
+  }
+
   // Mic EQ Dynamic Band Add / Delete
   const btnMicAddBand = document.getElementById('btn-mic-eq-add-band');
   const btnMicDelBand = document.getElementById('btn-mic-eq-delete-band');
