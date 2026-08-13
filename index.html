@@ -51,22 +51,42 @@
             <img src="icon.png" class="w-8 h-8 rounded-xl border border-white/20 object-cover shadow-lg shadow-purple-950/80" alt="Logo" onerror="this.onerror=null; this.outerHTML='<div class=\'w-8 h-8 rounded-xl bg-purple-600 flex items-center justify-center text-white font-bold\'>M</div>';">
             <div>
               <h1 class="text-xs font-black tracking-wider text-white leading-tight">MANA<span class="text-purple-400">.RESONANCE</span></h1>
-              <p class="text-[9px] text-slate-500 font-mono font-semibold">STUDIO v1.1.9</p>
+              <p class="text-[9px] text-slate-500 font-mono font-semibold">STUDIO v1.3.0</p>
             </div>
           </div>
 
-          <!-- ナビゲーションボタン (Live Analysis ↔ Settings ページ切替) -->
+          <!-- ナビゲーションボタン (Live Analysis ↔ Mic Processing ↔ Audio Output ↔ Settings ページ切替) -->
           <div class="space-y-4">
+            <!-- 1. ANALYTICS グループ -->
             <div>
-              <span id="nav-cat-title" class="text-[9px] font-extrabold text-slate-500 uppercase tracking-widest px-2.5 block mb-2">ANALYTICS</span>
+              <span id="nav-cat-analytics" class="text-[9px] font-extrabold text-slate-500 uppercase tracking-widest px-2.5 block mb-2">ANALYTICS</span>
               <nav class="space-y-1.5">
-                <!-- 1. Live Analysis ページ切替ボタン -->
                 <button id="nav-btn-analytics" class="w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-xs font-bold text-white bg-purple-600/30 border border-purple-500/50 transition-all">
                   <svg class="w-4 h-4 text-purple-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
                   <span id="nav-txt-analytics">Live Analysis</span>
                 </button>
+              </nav>
+            </div>
 
-                <!-- 2. Settings ページ切替ボタン -->
+            <!-- 2. AUDIO DSP グループ -->
+            <div>
+              <span id="nav-cat-dsp" class="text-[9px] font-extrabold text-slate-500 uppercase tracking-widest px-2.5 block mb-2">AUDIO DSP</span>
+              <nav class="space-y-1.5">
+                <button id="nav-btn-mic-proc" class="w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-xs font-bold text-slate-400 hover:text-white hover:bg-white/5 border border-transparent transition-all">
+                  <svg class="w-4 h-4 text-slate-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path></svg>
+                  <span id="nav-txt-mic-proc">Mic Processing</span>
+                </button>
+                <button id="nav-btn-audio-out" class="w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-xs font-bold text-slate-400 hover:text-white hover:bg-white/5 border border-transparent transition-all">
+                  <svg class="w-4 h-4 text-slate-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"></path></svg>
+                  <span id="nav-txt-audio-out">Audio Output</span>
+                </button>
+              </nav>
+            </div>
+
+            <!-- 3. SETTINGS グループ -->
+            <div>
+              <span id="nav-cat-settings" class="text-[9px] font-extrabold text-slate-500 uppercase tracking-widest px-2.5 block mb-2">SETTINGS</span>
+              <nav class="space-y-1.5">
                 <button id="nav-btn-settings" class="w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-xs font-bold text-slate-400 hover:text-white hover:bg-white/5 border border-transparent transition-all">
                   <svg class="w-4 h-4 text-slate-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
                   <span id="nav-txt-settings">Settings</span>
@@ -301,7 +321,231 @@
         </div>
 
         <!-- ===================================================================
-             VIEW 2: SETTINGS 画面 (同ウィンドウ内 ページ切り替え)
+             VIEW 2: MIC PROCESSING 画面 (マイク処理: EQ + コンプレッサー)
+             =================================================================== -->
+        <div id="view-mic-proc" class="hidden flex-1 flex flex-col p-5 space-y-4 overflow-y-auto min-w-0 bg-[#080b14]">
+          <!-- ヘッダー -->
+          <div class="flex items-center justify-between border-b border-white/10 pb-3">
+            <div>
+              <h2 id="mic-proc-title" class="text-xl font-black text-white flex items-center">
+                <svg class="w-5 h-5 mr-2.5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path></svg>
+                MICROPHONE PROCESSING (DSP)
+              </h2>
+              <p id="mic-proc-sub" class="text-xs text-slate-400 mt-0.5">High-Pass Filter ➔ Dynamics Compressor ➔ Parametric EQ ➔ Safety Limiter</p>
+            </div>
+            <div class="flex items-center space-x-2">
+              <button id="btn-mic-eq-add-band" class="bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs px-3.5 py-1.5 rounded-xl shadow transition-all active:scale-95 flex items-center space-x-1">
+                <span>＋ Add Band</span>
+              </button>
+              <button id="btn-mic-eq-reset" class="bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs px-3.5 py-1.5 rounded-xl border border-white/10 transition-all">
+                <span>Reset EQ</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- 上段: パラメトリックEQ (Sonarスタイル Canvas ＋ コントロール) -->
+          <div class="liquid-glass-card p-4 space-y-3">
+            <div class="flex items-center justify-between text-xs font-bold text-slate-300">
+              <span id="lbl-mic-eq-title">PARAMETRIC EQUALIZER (SONAR SPECTRUM FUSED)</span>
+              <span id="lbl-mic-eq-selected-info" class="font-mono text-purple-400 text-[11px]">Selected: Band 1 (Peaking: 1000Hz, 0dB, Q:1.0)</span>
+            </div>
+
+            <!-- EQ Canvas (FFTスペクトラム ＋ EQカーブ) -->
+            <div class="relative w-full h-56 bg-black/80 rounded-xl overflow-hidden border border-white/10 shadow-inner">
+              <canvas id="canvas-eq-mic" class="w-full h-full block cursor-crosshair"></canvas>
+            </div>
+
+            <!-- 選択ノード詳細編集バー -->
+            <div class="grid grid-cols-2 md:grid-cols-5 gap-3 pt-1 text-xs bg-black/40 p-3 rounded-xl border border-white/5">
+              <div>
+                <label class="block text-[10px] font-bold text-slate-400 mb-1">Filter Type</label>
+                <select id="select-mic-band-type" class="w-full bg-slate-900 border border-white/20 text-purple-200 text-xs rounded-lg p-1.5 font-bold outline-none">
+                  <option value="peaking">Peaking (Bell)</option>
+                  <option value="lowshelf">Low Shelf</option>
+                  <option value="highshelf">High Shelf</option>
+                  <option value="highpass">High Pass (Low Cut)</option>
+                  <option value="lowpass">Low Pass (High Cut)</option>
+                  <option value="notch">Notch (Filter)</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-[10px] font-bold text-slate-400 mb-1">Freq (Hz): <span id="txt-mic-freq" class="text-purple-300 font-mono">1000</span></label>
+                <input type="range" id="slider-mic-freq" min="20" max="20000" step="1" value="1000" class="w-full accent-purple-500 h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer">
+              </div>
+              <div>
+                <label class="block text-[10px] font-bold text-slate-400 mb-1">Gain (dB): <span id="txt-mic-gain" class="text-purple-300 font-mono">0.0</span></label>
+                <input type="range" id="slider-mic-gain" min="-18" max="18" step="0.5" value="0" class="w-full accent-purple-500 h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer">
+              </div>
+              <div>
+                <label class="block text-[10px] font-bold text-slate-400 mb-1">Q Width: <span id="txt-mic-q" class="text-purple-300 font-mono">1.0</span></label>
+                <input type="range" id="slider-mic-q" min="0.1" max="10" step="0.1" value="1.0" class="w-full accent-purple-500 h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer">
+              </div>
+              <div class="flex items-end">
+                <button id="btn-mic-eq-delete-band" class="w-full bg-red-900/40 hover:bg-red-600 text-red-200 hover:text-white font-bold text-xs py-1.5 rounded-lg border border-red-500/30 transition-all">
+                  ✕ Delete Band
+                </button>
+              </div>
+            </div>
+
+            <!-- クイックマクロ・スライダー -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2">
+              <div class="bg-black/30 p-2.5 rounded-xl border border-white/5 space-y-1">
+                <div class="flex justify-between text-[11px] font-bold">
+                  <span class="text-slate-300">Bass (Low Energy)</span>
+                  <span id="txt-macro-bass" class="text-purple-400 font-mono">0 dB</span>
+                </div>
+                <input type="range" id="slider-macro-bass" min="-12" max="12" value="0" step="0.5" class="w-full accent-purple-500 h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer">
+              </div>
+              <div class="bg-black/30 p-2.5 rounded-xl border border-white/5 space-y-1">
+                <div class="flex justify-between text-[11px] font-bold">
+                  <span class="text-slate-300">Voice Clarity (Mid Presence)</span>
+                  <span id="txt-macro-clarity" class="text-purple-400 font-mono">0 dB</span>
+                </div>
+                <input type="range" id="slider-macro-clarity" min="-12" max="12" value="0" step="0.5" class="w-full accent-purple-500 h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer">
+              </div>
+              <div class="bg-black/30 p-2.5 rounded-xl border border-white/5 space-y-1">
+                <div class="flex justify-between text-[11px] font-bold">
+                  <span class="text-slate-300">High Air (Crispness)</span>
+                  <span id="txt-macro-air" class="text-purple-400 font-mono">0 dB</span>
+                </div>
+                <input type="range" id="slider-macro-air" min="-12" max="12" value="0" step="0.5" class="w-full accent-purple-500 h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer">
+              </div>
+            </div>
+          </div>
+
+          <!-- 下段: ビジュアル・コンプレッサー -->
+          <div class="liquid-glass-card p-4 space-y-3">
+            <div class="flex items-center justify-between text-xs font-bold text-slate-300">
+              <span id="lbl-comp-title">DYNAMICS COMPRESSOR & NEON GAIN REDUCTION METER</span>
+              <label class="flex items-center space-x-2 cursor-pointer">
+                <input type="checkbox" id="toggle-comp-enable" checked class="rounded border-purple-800 text-purple-600 focus:ring-0 bg-black w-4 h-4">
+                <span class="text-xs text-purple-300">Compressor Active</span>
+              </label>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <!-- 左 3列: ダイナミクス応答グラフ Canvas -->
+              <div class="md:col-span-3 h-48 bg-black/80 rounded-xl overflow-hidden border border-white/10 relative">
+                <canvas id="canvas-comp-graph" class="w-full h-full block"></canvas>
+              </div>
+
+              <!-- 右 1列: リアルタイム GR ネオンメーター Canvas -->
+              <div class="h-48 bg-black/80 rounded-xl overflow-hidden border border-white/10 p-2 flex flex-col items-center justify-between">
+                <span class="text-[10px] font-bold text-slate-400 tracking-wider uppercase">Gain Reduction</span>
+                <div class="flex-1 w-full flex justify-center py-1">
+                  <canvas id="canvas-gr-meter" class="h-full w-12 block"></canvas>
+                </div>
+                <span id="txt-gr-val" class="text-xs font-mono font-black text-rose-400">0.0 dB</span>
+              </div>
+            </div>
+
+            <!-- コンプレッサーコントロールパラメーター群 -->
+            <div class="grid grid-cols-2 md:grid-cols-6 gap-3 pt-1 text-xs">
+              <div class="bg-black/30 p-2 rounded-xl border border-white/5">
+                <label class="block text-[10px] font-bold text-slate-400 mb-1">Threshold: <span id="txt-comp-thresh" class="text-purple-300 font-mono">-24dB</span></label>
+                <input type="range" id="slider-comp-thresh" min="-60" max="0" step="1" value="-24" class="w-full accent-purple-500 h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer">
+              </div>
+              <div class="bg-black/30 p-2 rounded-xl border border-white/5">
+                <label class="block text-[10px] font-bold text-slate-400 mb-1">Ratio: <span id="txt-comp-ratio" class="text-purple-300 font-mono">4:1</span></label>
+                <input type="range" id="slider-comp-ratio" min="1" max="20" step="0.5" value="4" class="w-full accent-purple-500 h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer">
+              </div>
+              <div class="bg-black/30 p-2 rounded-xl border border-white/5">
+                <label class="block text-[10px] font-bold text-slate-400 mb-1">Attack: <span id="txt-comp-attack" class="text-purple-300 font-mono">10ms</span></label>
+                <input type="range" id="slider-comp-attack" min="1" max="100" step="1" value="10" class="w-full accent-purple-500 h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer">
+              </div>
+              <div class="bg-black/30 p-2 rounded-xl border border-white/5">
+                <label class="block text-[10px] font-bold text-slate-400 mb-1">Release: <span id="txt-comp-release" class="text-purple-300 font-mono">100ms</span></label>
+                <input type="range" id="slider-comp-release" min="10" max="1000" step="10" value="100" class="w-full accent-purple-500 h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer">
+              </div>
+              <div class="bg-black/30 p-2 rounded-xl border border-white/5">
+                <label class="block text-[10px] font-bold text-slate-400 mb-1">Makeup Gain: <span id="txt-comp-makeup" class="text-purple-300 font-mono">+0dB</span></label>
+                <input type="range" id="slider-comp-makeup" min="0" max="24" step="0.5" value="0" class="w-full accent-purple-500 h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer">
+              </div>
+              <div class="bg-black/30 p-2 rounded-xl border border-white/5 flex flex-col justify-between">
+                <label class="block text-[10px] font-bold text-slate-400 mb-1">Auto Gain</label>
+                <label class="flex items-center space-x-2 cursor-pointer pb-1">
+                  <input type="checkbox" id="toggle-comp-autogain" class="rounded border-purple-800 text-purple-600 focus:ring-0 bg-black w-4 h-4">
+                  <span class="text-[11px] text-purple-300 font-bold">Auto</span>
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ===================================================================
+             VIEW 3: AUDIO OUTPUT 画面 (システム音声処理: EQ ＋ プリセット)
+             =================================================================== -->
+        <div id="view-audio-out" class="hidden flex-1 flex flex-col p-5 space-y-4 overflow-y-auto min-w-0 bg-[#080b14]">
+          <!-- ヘッダー ＆ プリセットバー -->
+          <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-white/10 pb-3">
+            <div>
+              <h2 id="audio-out-title" class="text-xl font-black text-white flex items-center">
+                <svg class="w-5 h-5 mr-2.5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"></path></svg>
+                AUDIO OUTPUT EQUALIZER (SYSTEM SOUND)
+              </h2>
+              <p id="audio-out-sub" class="text-xs text-slate-400 mt-0.5">Customize output frequency response with real-time spectrum analysis and presets</p>
+            </div>
+            
+            <!-- プリセット切替ボタン群 -->
+            <div class="flex items-center space-x-1.5 bg-black/60 p-1 rounded-xl border border-white/10">
+              <button id="btn-preset-flat" class="px-3 py-1.5 rounded-lg text-xs font-bold text-white bg-purple-600 transition-all">Flat</button>
+              <button id="btn-preset-fps" class="px-3 py-1.5 rounded-lg text-xs font-bold text-slate-400 hover:text-white transition-all">Game (FPS)</button>
+              <button id="btn-preset-music" class="px-3 py-1.5 rounded-lg text-xs font-bold text-slate-400 hover:text-white transition-all">Music</button>
+              <button id="btn-preset-movie" class="px-3 py-1.5 rounded-lg text-xs font-bold text-slate-400 hover:text-white transition-all">Movie</button>
+            </div>
+          </div>
+
+          <!-- EQ 画面コンポーネント (共通) -->
+          <div class="liquid-glass-card p-4 space-y-3">
+            <div class="flex items-center justify-between text-xs font-bold text-slate-300">
+              <span id="lbl-out-eq-title">PARAMETRIC EQUALIZER (AUDIO OUTPUT)</span>
+              <div class="flex items-center space-x-2">
+                <button id="btn-out-eq-add-band" class="bg-purple-600 hover:bg-purple-500 text-white font-bold text-[11px] px-3 py-1 rounded-lg transition-all">＋ Add Band</button>
+                <button id="btn-out-eq-reset" class="bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-[11px] px-3 py-1 rounded-lg border border-white/10 transition-all">Reset</button>
+              </div>
+            </div>
+
+            <!-- Output EQ Canvas -->
+            <div class="relative w-full h-72 bg-black/80 rounded-xl overflow-hidden border border-white/10 shadow-inner">
+              <canvas id="canvas-eq-out" class="w-full h-full block cursor-crosshair"></canvas>
+            </div>
+
+            <!-- Output 選択ノード編集バー -->
+            <div class="grid grid-cols-2 md:grid-cols-5 gap-3 pt-1 text-xs bg-black/40 p-3 rounded-xl border border-white/5">
+              <div>
+                <label class="block text-[10px] font-bold text-slate-400 mb-1">Filter Type</label>
+                <select id="select-out-band-type" class="w-full bg-slate-900 border border-white/20 text-purple-200 text-xs rounded-lg p-1.5 font-bold outline-none">
+                  <option value="peaking">Peaking (Bell)</option>
+                  <option value="lowshelf">Low Shelf</option>
+                  <option value="highshelf">High Shelf</option>
+                  <option value="highpass">High Pass (Low Cut)</option>
+                  <option value="lowpass">Low Pass (High Cut)</option>
+                  <option value="notch">Notch (Filter)</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-[10px] font-bold text-slate-400 mb-1">Freq (Hz): <span id="txt-out-freq" class="text-purple-300 font-mono">1000</span></label>
+                <input type="range" id="slider-out-freq" min="20" max="20000" step="1" value="1000" class="w-full accent-purple-500 h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer">
+              </div>
+              <div>
+                <label class="block text-[10px] font-bold text-slate-400 mb-1">Gain (dB): <span id="txt-out-gain" class="text-purple-300 font-mono">0.0</span></label>
+                <input type="range" id="slider-out-gain" min="-18" max="18" step="0.5" value="0" class="w-full accent-purple-500 h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer">
+              </div>
+              <div>
+                <label class="block text-[10px] font-bold text-slate-400 mb-1">Q Width: <span id="txt-out-q" class="text-purple-300 font-mono">1.0</span></label>
+                <input type="range" id="slider-out-q" min="0.1" max="10" step="0.1" value="1.0" class="w-full accent-purple-500 h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer">
+              </div>
+              <div class="flex items-end">
+                <button id="btn-out-eq-delete-band" class="w-full bg-red-900/40 hover:bg-red-600 text-red-200 hover:text-white font-bold text-xs py-1.5 rounded-lg border border-red-500/30 transition-all">
+                  ✕ Delete Band
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ===================================================================
+             VIEW 4: SETTINGS 画面 (同ウィンドウ内 ページ切り替え)
              =================================================================== -->
         <div id="view-settings" class="hidden flex-1 flex flex-col p-8 space-y-6 overflow-y-auto min-w-0 bg-[#080b14]">
           
