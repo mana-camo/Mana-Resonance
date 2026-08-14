@@ -673,90 +673,11 @@ namespace ManaResonanceInstall
                     if (key != null)
                     {
                         key.SetValue("DisplayName", "Mana Resonance");
-                        key.SetValue("DisplayVersion", "1.4.2");
+                        key.SetValue("DisplayVersion", "1.5.0");
                         key.SetValue("Publisher", "Mana Resonance Team");
                         key.SetValue("UninstallString", "\"" + Path.Combine(targetDir, "uninstaller.exe") + "\"");
                         key.SetValue("DisplayIcon", Path.Combine(targetDir, "Mana Resonance.exe"));
                         key.SetValue("InstallLocation", targetDir);
-
-                        // 独自仮想オーディオデバイス情報の登録
-                        key.SetValue("VirtualMicrophone", "Mana Resonance - Microphone");
-                        key.SetValue("VirtualHeadphones", "Mana Resonance - Headphones");
-                        key.SetValue("VirtualAux", "Mana Resonance - Aux");
-                    }
-                }
-
-                RegisterVirtualAudioDevices();
-            }
-            catch { }
-        }
-
-        private void RegisterVirtualAudioDevices()
-        {
-            try
-            {
-                // 1. 録音マイクデバイス: Mana Resonance - Microphone
-                string captureRoot = @"SOFTWARE\Microsoft\Windows\CurrentVersion\MMDevices\Audio\Capture\{7a2c3d1f-mana-4101-8bc1-microphon001}";
-                using (RegistryKey devKey = Registry.LocalMachine.CreateSubKey(captureRoot))
-                {
-                    if (devKey != null)
-                    {
-                        devKey.SetValue("DeviceState", 1, RegistryValueKind.DWord); // 1 = ACTIVE (有効なデバイス)
-                    }
-                }
-                using (RegistryKey key = Registry.LocalMachine.CreateSubKey(captureRoot + @"\Properties"))
-                {
-                    if (key != null)
-                    {
-                        key.SetValue("{a45c254e-df1c-4efd-8020-67d146a850e0},2", "Mana Resonance - Microphone", RegistryValueKind.String);
-                        key.SetValue("{b3f8f860-43a1-456b-8e2b-570f7d016549},2", "Mana Resonance Virtual Microphone Device", RegistryValueKind.String);
-                    }
-                }
-
-                // 2. 再生スピーカー/ヘッドホンデバイス: Mana Resonance - Headphones
-                string renderHpRoot = @"SOFTWARE\Microsoft\Windows\CurrentVersion\MMDevices\Audio\Render\{7a2c3d1f-mana-4102-8bc1-headphone001}";
-                using (RegistryKey devKey = Registry.LocalMachine.CreateSubKey(renderHpRoot))
-                {
-                    if (devKey != null)
-                    {
-                        devKey.SetValue("DeviceState", 1, RegistryValueKind.DWord); // 1 = ACTIVE
-                    }
-                }
-                using (RegistryKey key = Registry.LocalMachine.CreateSubKey(renderHpRoot + @"\Properties"))
-                {
-                    if (key != null)
-                    {
-                        key.SetValue("{a45c254e-df1c-4efd-8020-67d146a850e0},2", "Mana Resonance - Headphones", RegistryValueKind.String);
-                        key.SetValue("{b3f8f860-43a1-456b-8e2b-570f7d016549},2", "Mana Resonance Virtual Headphones Device", RegistryValueKind.String);
-                    }
-                }
-
-                // 3. 再生スピーカー/AUXデバイス: Mana Resonance - Aux
-                string renderAuxRoot = @"SOFTWARE\Microsoft\Windows\CurrentVersion\MMDevices\Audio\Render\{7a2c3d1f-mana-4103-8bc1-auxdevice0001}";
-                using (RegistryKey devKey = Registry.LocalMachine.CreateSubKey(renderAuxRoot))
-                {
-                    if (devKey != null)
-                    {
-                        devKey.SetValue("DeviceState", 1, RegistryValueKind.DWord); // 1 = ACTIVE
-                    }
-                }
-                using (RegistryKey key = Registry.LocalMachine.CreateSubKey(renderAuxRoot + @"\Properties"))
-                {
-                    if (key != null)
-                    {
-                        key.SetValue("{a45c254e-df1c-4efd-8020-67d146a850e0},2", "Mana Resonance - Aux", RegistryValueKind.String);
-                        key.SetValue("{b3f8f860-43a1-456b-8e2b-570f7d016549},2", "Mana Resonance Virtual Aux Device", RegistryValueKind.String);
-                    }
-                }
-
-                // 4. SYSTEM Audio Class レジストリへのドライバインターフェース名登録
-                string audioClassPath = @"SYSTEM\CurrentControlSet\Control\Class\{4d36e96c-e325-11ce-bfba-08002be10318}\0099";
-                using (RegistryKey classKey = Registry.LocalMachine.CreateSubKey(audioClassPath))
-                {
-                    if (classKey != null)
-                    {
-                        classKey.SetValue("DriverDesc", "Mana Resonance Virtual Audio Driver", RegistryValueKind.String);
-                        classKey.SetValue("ProviderName", "Mana Resonance Studio", RegistryValueKind.String);
                     }
                 }
             }

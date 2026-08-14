@@ -226,105 +226,23 @@ function resizeCanvases() {
 // 1. Audio Stream & Web Audio API (システム音声自動キャプチャ 1.0.8 準拠)
 // --------------------------------------------------------------------------
 let isReconnecting = false;
-let currentSelectedInputId = 'default';
-let currentSelectedOutputId = 'default';
-
-// 全オーディオ入出力デバイスの列挙・自動検出 ＆ 独自仮想デバイス割り当て
-async function enumerateAudioDevices() {
-  try {
-    const devices = await navigator.mediaDevices.enumerateDevices();
-    const selectInput = document.getElementById('select-input-device');
-    const selectHeadphonesOut = document.getElementById('select-out-headphones-device');
-    const selectAuxOut = document.getElementById('select-out-aux-device');
-
-    const inputs = devices.filter(d => d.kind === 'audioinput');
-    const outputs = devices.filter(d => d.kind === 'audiooutput');
-
-    // 1. マイク入力 (マイク出力は Mana Resonance - Microphone に固定)
-    if (selectInput) {
-      selectInput.innerHTML = '';
-      if (inputs.length === 0) {
-        selectInput.innerHTML = '<option value="default">Default System Microphone</option>';
-      } else {
-        inputs.forEach((d, idx) => {
-          const opt = document.createElement('option');
-          opt.value = d.deviceId;
-          opt.textContent = d.label || `Microphone ${idx + 1} (${d.deviceId.slice(0, 8)})`;
-          selectInput.appendChild(opt);
-        });
-      }
-      if (currentSelectedInputId) selectInput.value = currentSelectedInputId;
-    }
-
-    // 3. 大元ヘッドホン出力先 (Mana Resonance - Headphones ルーティング)
-    if (selectHeadphonesOut) {
-      selectHeadphonesOut.innerHTML = '';
-      outputs.forEach((d, idx) => {
-        const opt = document.createElement('option');
-        opt.value = d.deviceId;
-        opt.textContent = d.label || `Headphones Output ${idx + 1} (${d.deviceId.slice(0, 8)})`;
-        selectHeadphonesOut.appendChild(opt);
-      });
-      if (currentSelectedOutputId) selectHeadphonesOut.value = currentSelectedOutputId;
-    }
-
-    // 4. 大元AUX出力先 (Mana Resonance - Aux ルーティング)
-    if (selectAuxOut) {
-      selectAuxOut.innerHTML = '';
-      outputs.forEach((d, idx) => {
-        const opt = document.createElement('option');
-        opt.value = d.deviceId;
-        opt.textContent = d.label || `AUX Output ${idx + 1} (${d.deviceId.slice(0, 8)})`;
-        selectAuxOut.appendChild(opt);
-      });
-    }
-  } catch (err) {
-    console.error('デバイスの列挙中にエラーが発生しました:', err);
-  }
-}
-
-// 入力マイクデバイスの即時切り替え
-async function switchInputDevice(deviceId) {
-  currentSelectedInputId = deviceId;
-  try {
-    if (micStream) {
-      micStream.getTracks().forEach(track => track.stop());
-    }
-
-    const constraints = (deviceId === 'default' || !deviceId)
-      ? { audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } }
-      : { audio: { deviceId: { exact: deviceId }, echoCancellation: false, noiseSuppression: false, autoGainControl: false } };
-
-    micStream = await navigator.mediaDevices.getUserMedia(constraints);
-
-    if (audioCtx) {
-      sourceNode = audioCtx.createMediaStreamSource(micStream);
-      setupAudioNodes(sourceNode);
-      console.log('入力マイクデバイスを切り替えました:', deviceId);
-    }
-  } catch (err) {
-    console.error('入力マイクの切り替えに失敗しました:', err);
-  }
-}
-
-// 出力スピーカー/ヘッドホン/仮想オーディオデバイスへの即時ルーティング (setSinkId)
-async function switchOutputDevice(deviceId) {
-  currentSelectedOutputId = deviceId;
-  try {
-    if (audioCtx && typeof audioCtx.setSinkId === 'function') {
-      await audioCtx.setSinkId(deviceId === 'default' ? '' : deviceId);
-      console.log('大元のアウトプット出力デバイスを切り替えました:', deviceId);
-    }
-  } catch (err) {
-    console.error('出力デバイスへの setSinkId ルーティングに失敗しました:', err);
-  }
-}
 
 async function startAudioStream() {
   if (isReconnecting) return;
   isReconnecting = true;
 
   try {
+    if (sourceNode) {
+      try { sourceNode.disconnect(); } catch (e) {}
+      sourceNode = null;
+    }
+    if (micStream) {
+      micStream.getTracks().forEach(track => {
+        try { track.stop(); } catch (e) {}
+      });
+      micStream = null;
+    }
+
     if (!audioCtx) {
       audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     }
@@ -332,23 +250,29 @@ async function startAudioStream() {
       await audioCtx.resume();
     }
 
-    if (currentSelectedInputId && currentSelectedInputId !== 'default') {
-      await switchInputDevice(currentSelectedInputId);
-    } else {
-      // 1.0.8 同等: getDisplayMedia を使用してシステム音声（デスクトップオーディオ）を直接キャプチャ
-      try {
-        micStream = await navigator.mediaDevices.getDisplayMedia({ audio: true, video: true });
-        micStream.getVideoTracks().forEach(track => track.stop());
-        sourceNode = audioCtx.createMediaStreamSource(micStream);
-        setupAudioNodes(sourceNode);
-      } catch (e) {
-        await switchInputDevice('default');
-      }
-    }
+    // 1.0.8 同等: getDisplayMedia を使用してシステム音声（デスクトップオーディオ）を直接キャプチャ
+    micStream = await navigator.mediaDevices.getDisplayMedia({
+      audio: true,
+      video: true
+    });
 
-    await enumerateAudioDevices();
+    // 不要なビデオトラックを即座に停止・解放
+    micStream.getVideoTracks().forEach(track => track.stop());
+
+    sourceNode = audioCtx.createMediaStreamSource(micStream);
+    setupAudioNodes(sourceNode);
+    console.log('システム音声ストリームの接続に成功しました。');
+
   } catch (err) {
     console.error('システム音声の自動取得に失敗しました:', err);
+    // フォールバック: マイク入力
+    try {
+      micStream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }
+      });
+      sourceNode = audioCtx.createMediaStreamSource(micStream);
+      setupAudioNodes(sourceNode);
+    } catch (e) {}
   } finally {
     isReconnecting = false;
   }
@@ -393,9 +317,6 @@ function setupAudioNodes(source) {
 
   source.connect(highFilter);
   highFilter.connect(highAnalyser);
-
-  // 本格DSPパイプライン (HPF ➔ Comp ➔ Parametric EQ ➔ Limiter) の接続
-  setupDSPNodes(source);
 }
 
 // --------------------------------------------------------------------------
@@ -1023,32 +944,16 @@ function updateUIForLanguage() {
   const isJA = (currentAppLang === 'JA');
 
   const navCatAnalytics = document.getElementById('nav-cat-analytics');
-  const navCatDsp = document.getElementById('nav-cat-dsp');
   const navCatSettings = document.getElementById('nav-cat-settings');
 
   const navTxtAnalytics = document.getElementById('nav-txt-analytics');
-  const navTxtMicProc = document.getElementById('nav-txt-mic-proc');
-  const navTxtAudioOut = document.getElementById('nav-txt-audio-out');
   const navTxtSettings = document.getElementById('nav-txt-settings');
 
   if (navCatAnalytics) navCatAnalytics.textContent = isJA ? '解析機能' : 'ANALYTICS';
-  if (navCatDsp) navCatDsp.textContent = isJA ? '音声処理' : 'AUDIO DSP';
   if (navCatSettings) navCatSettings.textContent = isJA ? 'システム設定' : 'SETTINGS';
 
   if (navTxtAnalytics) navTxtAnalytics.textContent = isJA ? 'ライブ解析' : 'Live Analysis';
-  if (navTxtMicProc) navTxtMicProc.textContent = isJA ? 'マイク処理 (EQ/Comp)' : 'Mic Processing';
-  if (navTxtAudioOut) navTxtAudioOut.textContent = isJA ? '音声出力 (EQ)' : 'Audio Output';
   if (navTxtSettings) navTxtSettings.textContent = isJA ? 'システム設定' : 'Settings';
-
-  const micProcTitle = document.getElementById('mic-proc-title');
-  const micProcSub = document.getElementById('mic-proc-sub');
-  if (micProcTitle) micProcTitle.innerHTML = isJA ? 'マイク音声処理 (DSP / EQ / COMP)' : 'MICROPHONE PROCESSING (DSP)';
-  if (micProcSub) micProcSub.textContent = isJA ? 'ハイパスフィルター ➔ ダイナミクスコンプレッサー ➔ パラメトリックEQ ➔ セーフティリミッター' : 'High-Pass Filter ➔ Dynamics Compressor ➔ Parametric EQ ➔ Safety Limiter';
-
-  const audioOutTitle = document.getElementById('audio-out-title');
-  const audioOutSub = document.getElementById('audio-out-sub');
-  if (audioOutTitle) audioOutTitle.innerHTML = isJA ? 'システム音声出力イコライザー (EQ)' : 'AUDIO OUTPUT EQUALIZER (SYSTEM SOUND)';
-  if (audioOutSub) audioOutSub.textContent = isJA ? 'リアルタイムスペクトラムアナライザーとプリセット対応の出力EQ調整' : 'Customize output frequency response with real-time spectrum analysis and presets';
 
   const settingsHeadTitle = document.getElementById('settings-head-title');
   const settingsHeadSub = document.getElementById('settings-head-sub');
@@ -1105,42 +1010,31 @@ function setupUIEvents() {
     resizeCanvases();
   });
 
-  // ★ 4画面 同一ウィンドウ内 ページ切り替え (Analytics / Mic Processing / Audio Output / Settings) ★
+  // ★ 2画面 同一ウィンドウ内 ページ切り替え (Analytics ↔ Settings) ★
   const navBtnAnalytics = document.getElementById('nav-btn-analytics');
-  const navBtnMicProc = document.getElementById('nav-btn-mic-proc');
-  const navBtnAudioOut = document.getElementById('nav-btn-audio-out');
   const navBtnSettings = document.getElementById('nav-btn-settings');
 
   const viewAnalytics = document.getElementById('view-analytics');
-  const viewMicProc = document.getElementById('view-mic-proc');
-  const viewAudioOut = document.getElementById('view-audio-out');
   const viewSettings = document.getElementById('view-settings');
 
-  const allNavBtns = [navBtnAnalytics, navBtnMicProc, navBtnAudioOut, navBtnSettings];
-  const allViews = [viewAnalytics, viewMicProc, viewAudioOut, viewSettings];
+  if (navBtnAnalytics && navBtnSettings && viewAnalytics && viewSettings) {
+    navBtnAnalytics.addEventListener('click', () => {
+      viewAnalytics.classList.remove('hidden');
+      viewSettings.classList.add('hidden');
 
-  function switchPage(targetView, activeBtn) {
-    allViews.forEach(v => { if (v) v.classList.add('hidden'); });
-    if (targetView) targetView.classList.remove('hidden');
+      navBtnAnalytics.className = 'w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-xs font-bold text-white bg-purple-600/30 border border-purple-500/50 transition-all';
+      navBtnSettings.className = 'w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-xs font-bold text-slate-400 hover:text-white hover:bg-white/5 border border-transparent transition-all';
 
-    allNavBtns.forEach(btn => {
-      if (btn) {
-        btn.className = 'w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-xs font-bold text-slate-400 hover:text-white hover:bg-white/5 border border-transparent transition-all';
-      }
+      setTimeout(resizeCanvases, 50);
     });
-    if (activeBtn) {
-      activeBtn.className = 'w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-xs font-bold text-white bg-purple-600/30 border border-purple-500/50 transition-all';
-    }
 
-    setTimeout(resizeCanvases, 50);
-  }
-
-  if (navBtnAnalytics) navBtnAnalytics.addEventListener('click', () => switchPage(viewAnalytics, navBtnAnalytics));
-  if (navBtnMicProc) navBtnMicProc.addEventListener('click', () => switchPage(viewMicProc, navBtnMicProc));
-  if (navBtnAudioOut) navBtnAudioOut.addEventListener('click', () => switchPage(viewAudioOut, navBtnAudioOut));
-  if (navBtnSettings) {
     navBtnSettings.addEventListener('click', () => {
-      switchPage(viewSettings, navBtnSettings);
+      viewSettings.classList.remove('hidden');
+      viewAnalytics.classList.add('hidden');
+
+      navBtnSettings.className = 'w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-xs font-bold text-white bg-purple-600/30 border border-purple-500/50 transition-all';
+      navBtnAnalytics.className = 'w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-xs font-bold text-slate-400 hover:text-white hover:bg-white/5 border border-transparent transition-all';
+
       loadAppConfig();
       updateUIForLanguage();
     });
@@ -1240,824 +1134,9 @@ function setupUIEvents() {
   updateUIForLanguage();
 }
 
-// --------------------------------------------------------------------------
-// ★ DSP ENGINE: PARAMETRIC EQ (DYNAMIC BANDS) & VISUAL COMPRESSOR ★
-// --------------------------------------------------------------------------
 
-// --- DSP Audio Nodes State ---
-let micHPFNode = null;
-let micCompressorNode = null;
-let micMakeupNode = null;
-let micLimiterNode = null;
 
-let micBands = [
-  { id: 1, type: 'lowshelf', freq: 100, gain: 0, q: 1.0, node: null },
-  { id: 2, type: 'peaking', freq: 500, gain: 0, q: 1.0, node: null },
-  { id: 3, type: 'peaking', freq: 1000, gain: 0, q: 1.0, node: null },
-  { id: 4, type: 'peaking', freq: 3000, gain: 0, q: 1.0, node: null },
-  { id: 5, type: 'highshelf', freq: 8000, gain: 0, q: 1.0, node: null }
-];
-let selectedMicBandId = 3;
-let nextMicBandId = 6;
 
-let outBands = [
-  { id: 1, type: 'lowshelf', freq: 80, gain: 0, q: 1.0, node: null },
-  { id: 2, type: 'peaking', freq: 250, gain: 0, q: 1.0, node: null },
-  { id: 3, type: 'peaking', freq: 1000, gain: 0, q: 1.0, node: null },
-  { id: 4, type: 'peaking', freq: 4000, gain: 0, q: 1.0, node: null },
-  { id: 5, type: 'highshelf', freq: 10000, gain: 0, q: 1.0, node: null }
-];
-let selectedOutBandId = 3;
-let nextOutBandId = 6;
-
-let compParams = {
-  enabled: true,
-  threshold: -24,
-  ratio: 4,
-  attack: 0.010,
-  release: 0.100,
-  makeup: 0,
-  autoGain: false
-};
-
-let macroBass = 0;
-let macroClarity = 0;
-let macroAir = 0;
-
-// Web Audio API DSP パイプライン構築
-function setupDSPNodes(source) {
-  if (!audioCtx) return;
-
-  // 1. HPF (80Hz Low Cut)
-  micHPFNode = audioCtx.createBiquadFilter();
-  micHPFNode.type = 'highpass';
-  micHPFNode.frequency.value = 80;
-
-  // 2. DynamicsCompressorNode
-  micCompressorNode = audioCtx.createDynamicsCompressor();
-  applyCompressorParams();
-
-  // 3. Mic EQ Chain (BiquadFilterNodes)
-  rebuildMicEQChain();
-
-  // 4. Makeup Gain
-  micMakeupNode = audioCtx.createGain();
-  micMakeupNode.gain.value = Math.pow(10, compParams.makeup / 20);
-
-  // 5. Safety Output Limiter (@ 0dB threshold)
-  micLimiterNode = audioCtx.createDynamicsCompressor();
-  micLimiterNode.threshold.value = 0;
-  micLimiterNode.ratio.value = 20;
-  micLimiterNode.attack.value = 0.001;
-  micLimiterNode.release.value = 0.050;
-
-  // Output EQ Chain
-  rebuildOutEQChain();
-
-  // Pipe Connection: source -> HPF -> Comp -> EQ Chain -> Makeup -> Limiter -> Analyser
-  connectMicDSPPipeline(source);
-}
-
-function connectMicDSPPipeline(source) {
-  try {
-    source.disconnect();
-  } catch (e) {}
-
-  let current = source;
-
-  // HPF
-  current.connect(micHPFNode);
-  current = micHPFNode;
-
-  // Compressor
-  if (compParams.enabled && micCompressorNode) {
-    current.connect(micCompressorNode);
-    current = micCompressorNode;
-  }
-
-  // Mic EQ Nodes
-  for (let b of micBands) {
-    if (b.node) {
-      current.connect(b.node);
-      current = b.node;
-    }
-  }
-
-  // Makeup Gain
-  current.connect(micMakeupNode);
-  current = micMakeupNode;
-
-  // Safety Limiter
-  current.connect(micLimiterNode);
-  current = micLimiterNode;
-
-  // Analysers
-  if (pitchAnalyser) current.connect(pitchAnalyser);
-  if (spectrumAnalyser) current.connect(spectrumAnalyser);
-  if (lowAnalyser) current.connect(lowAnalyser);
-}
-
-function applyCompressorParams() {
-  if (!micCompressorNode) return;
-  micCompressorNode.threshold.value = compParams.threshold;
-  micCompressorNode.ratio.value = compParams.ratio;
-  micCompressorNode.attack.value = compParams.attack;
-  micCompressorNode.release.value = compParams.release;
-
-  if (micMakeupNode) {
-    let effectiveMakeup = compParams.makeup;
-    if (compParams.autoGain) {
-      // Auto Gain 計算: ThresholdとRatioに基づく減衰補填
-      const estReduction = Math.abs(compParams.threshold) * (1 - 1 / compParams.ratio) * 0.6;
-      effectiveMakeup += estReduction;
-    }
-    micMakeupNode.gain.value = Math.pow(10, effectiveMakeup / 20);
-  }
-}
-
-function rebuildMicEQChain() {
-  if (!audioCtx) return;
-  micBands.forEach(b => {
-    b.node = audioCtx.createBiquadFilter();
-    b.node.type = b.type;
-    b.node.frequency.value = b.freq;
-    b.node.gain.value = b.gain;
-    b.node.Q.value = b.q;
-  });
-  updateMacroEffects();
-}
-
-function rebuildOutEQChain() {
-  if (!audioCtx) return;
-  outBands.forEach(b => {
-    b.node = audioCtx.createBiquadFilter();
-    b.node.type = b.type;
-    b.node.frequency.value = b.freq;
-    b.node.gain.value = b.gain;
-    b.node.Q.value = b.q;
-  });
-}
-
-function updateMacroEffects() {
-  // マクロスライダーのゲインを対応するバンドに合成適用
-  let bLow = micBands.find(b => b.type === 'lowshelf') || micBands[0];
-  let bMid = micBands.find(b => b.type === 'peaking' && b.freq >= 1500 && b.freq <= 4000) || micBands[2];
-  let bHigh = micBands.find(b => b.type === 'highshelf') || micBands[micBands.length - 1];
-
-  if (bLow && bLow.node) bLow.node.gain.value = bLow.gain + macroBass;
-  if (bMid && bMid.node) bMid.node.gain.value = bMid.gain + macroClarity;
-  if (bHigh && bHigh.node) bHigh.node.gain.value = bHigh.gain + macroAir;
-}
-
-// --------------------------------------------------------------------------
-// ★ CANVAS DYNAMIC PARAMETRIC EQ ENGINE (SONAR STYLE) ★
-// --------------------------------------------------------------------------
-function freqToX(freq, width) {
-  const minF = Math.log10(20);
-  const maxF = Math.log10(20000);
-  return ((Math.log10(freq) - minF) / (maxF - minF)) * width;
-}
-
-function xToFreq(x, width) {
-  const minF = Math.log10(20);
-  const maxF = Math.log10(20000);
-  const f = Math.pow(10, minF + (x / width) * (maxF - minF));
-  return Math.max(20, Math.min(20000, Math.round(f)));
-}
-
-function gainToY(gain, height) {
-  // -18dB ~ +18dB 範囲を height にマッピング
-  return height * (0.5 - gain / 36);
-}
-
-function yToGain(y, height) {
-  const g = 36 * (0.5 - y / height);
-  return Math.max(-18, Math.min(18, Math.round(g * 2) / 2));
-}
-
-// EQ 描画 ＆ ノードドラッグ操作
-function setupEQCanvasInteraction(canvasId, bandsArray, isMic) {
-  const canvas = document.getElementById(canvasId);
-  if (!canvas) return;
-
-  let isDragging = false;
-
-  const getSelectedBand = () => {
-    const selId = isMic ? selectedMicBandId : selectedOutBandId;
-    return bandsArray.find(b => b.id === selId) || bandsArray[0];
-  };
-
-  const updateNodeControlsUI = () => {
-    const b = getSelectedBand();
-    if (!b) return;
-
-    const selectType = document.getElementById(isMic ? 'select-mic-band-type' : 'select-out-band-type');
-    const sliderFreq = document.getElementById(isMic ? 'slider-mic-freq' : 'slider-out-freq');
-    const sliderGain = document.getElementById(isMic ? 'slider-mic-gain' : 'slider-out-gain');
-    const sliderQ = document.getElementById(isMic ? 'slider-mic-q' : 'slider-out-q');
-
-    const txtFreq = document.getElementById(isMic ? 'txt-mic-freq' : 'txt-out-freq');
-    const txtGain = document.getElementById(isMic ? 'txt-mic-gain' : 'txt-out-gain');
-    const txtQ = document.getElementById(isMic ? 'txt-mic-q' : 'txt-out-q');
-    const lblInfo = document.getElementById(isMic ? 'lbl-mic-eq-selected-info' : 'lbl-out-eq-selected-info');
-
-    if (selectType) selectType.value = b.type;
-    if (sliderFreq) sliderFreq.value = b.freq;
-    if (sliderGain) sliderGain.value = b.gain;
-    if (sliderQ) sliderQ.value = b.q;
-
-    if (txtFreq) txtFreq.textContent = `${b.freq}Hz`;
-    if (txtGain) txtGain.textContent = `${b.gain > 0 ? '+' : ''}${b.gain}dB`;
-    if (txtQ) txtQ.textContent = b.q.toFixed(1);
-
-    if (lblInfo) {
-      lblInfo.textContent = `Selected: Band ${b.id} (${b.type.toUpperCase()}: ${b.freq}Hz, ${b.gain}dB, Q:${b.q.toFixed(1)})`;
-    }
-  };
-
-  canvas.addEventListener('mousedown', (e) => {
-    const rect = canvas.getBoundingClientRect();
-    const mx = e.clientX - rect.left;
-    const my = e.clientY - rect.top;
-
-    // ノードとのヒット判定 (半径 14px)
-    let hitBand = null;
-    let minDist = 999;
-    bandsArray.forEach(b => {
-      const nx = freqToX(b.freq, canvas.width);
-      const ny = gainToY(b.gain, canvas.height);
-      const dist = Math.hypot(mx - nx, my - ny);
-      if (dist < 18 && dist < minDist) {
-        minDist = dist;
-        hitBand = b;
-      }
-    });
-
-    if (hitBand) {
-      if (isMic) selectedMicBandId = hitBand.id;
-      else selectedOutBandId = hitBand.id;
-      isDragging = true;
-      updateNodeControlsUI();
-    }
-  });
-
-  window.addEventListener('mousemove', (e) => {
-    if (!isDragging) return;
-    const rect = canvas.getBoundingClientRect();
-    const mx = Math.max(0, Math.min(canvas.width, e.clientX - rect.left));
-    const my = Math.max(0, Math.min(canvas.height, e.clientY - rect.top));
-
-    const b = getSelectedBand();
-    if (b) {
-      b.freq = xToFreq(mx, canvas.width);
-      b.gain = yToGain(my, canvas.height);
-      if (b.node) {
-        b.node.frequency.value = b.freq;
-        b.node.gain.value = b.gain;
-      }
-      updateMacroEffects();
-      updateNodeControlsUI();
-    }
-  });
-
-  window.addEventListener('mouseup', () => {
-    isDragging = false;
-  });
-
-  // マウスホイールによる Q幅 調整
-  canvas.addEventListener('wheel', (e) => {
-    e.preventDefault();
-    const b = getSelectedBand();
-    if (b) {
-      const delta = e.deltaY < 0 ? 0.2 : -0.2;
-      b.q = Math.max(0.1, Math.min(10, Math.round((b.q + delta) * 10) / 10));
-      if (b.node) b.node.Q.value = b.q;
-      updateNodeControlsUI();
-    }
-  }, { passive: false });
-}
-
-// EQ Canvas 描画ループ (FFT スペクトラム + 合成周波数カーブ + ノード)
-function drawEQCanvas(canvasId, bandsArray, isMic) {
-  const canvas = document.getElementById(canvasId);
-  if (!canvas) return;
-  const ctx = canvas.getContext('2d');
-  const w = canvas.width;
-  const h = canvas.height;
-
-  ctx.clearRect(0, 0, w, h);
-
-  // 1. グリッド線 ＆ dB/Hz ガイド
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
-  ctx.lineWidth = 1;
-
-  // Hz 縦ガイド線 (100, 1k, 10k)
-  [100, 1000, 10000].forEach(f => {
-    const x = freqToX(f, w);
-    ctx.beginPath();
-    ctx.moveTo(x, 0);
-    ctx.lineTo(x, h);
-    ctx.stroke();
-
-    ctx.fillStyle = 'rgba(148, 163, 184, 0.4)';
-    ctx.font = '9px monospace';
-    ctx.fillText(`${f >= 1000 ? f/1000 + 'k' : f}Hz`, x + 3, h - 5);
-  });
-
-  // dB 横ガイド線 (0dB, +12dB, -12dB)
-  [0, 12, -12].forEach(g => {
-    const y = gainToY(g, h);
-    ctx.beginPath();
-    ctx.moveTo(0, y);
-    ctx.lineTo(w, y);
-    ctx.stroke();
-
-    ctx.fillStyle = g === 0 ? 'rgba(168, 85, 247, 0.4)' : 'rgba(148, 163, 184, 0.3)';
-    ctx.font = '9px monospace';
-    ctx.fillText(`${g > 0 ? '+' : ''}${g}dB`, 5, y - 3);
-  });
-
-  // 2. 背景 FFT スペクトラム描画 (半透明)
-  const analyser = isMic ? pitchAnalyser : spectrumAnalyser;
-  if (analyser) {
-    const freqData = new Uint8Array(analyser.frequencyBinCount);
-    analyser.getByteFrequencyData(freqData);
-
-    ctx.beginPath();
-    ctx.fillStyle = 'rgba(147, 51, 234, 0.12)';
-    ctx.moveTo(0, h);
-    for (let i = 0; i < freqData.length; i += 4) {
-      const f = (i / freqData.length) * (audioCtx ? audioCtx.sampleRate / 2 : 22050);
-      if (f < 20 || f > 20000) continue;
-      const x = freqToX(f, w);
-      const amp = freqData[i] / 255;
-      const y = h - (amp * h * 0.85);
-      ctx.lineTo(x, y);
-    }
-    ctx.lineTo(w, h);
-    ctx.closePath();
-    ctx.fill();
-  }
-
-  // 3. 全バンドの合成EQカーブ描画 (BiquadFilter getFrequencyResponse モデリング)
-  ctx.beginPath();
-  ctx.lineWidth = 2.5;
-  ctx.strokeStyle = '#c084fc';
-  ctx.shadowColor = '#a855f7';
-  ctx.shadowBlur = 10;
-
-  for (let x = 0; x < w; x += 3) {
-    const f = xToFreq(x, w);
-    let totalGain = 0;
-
-    // 各バンドの周波数レスポンスの計算近似
-    bandsArray.forEach(b => {
-      const ratio = f / b.freq;
-      if (b.type === 'peaking') {
-        const qFactor = b.q;
-        const bw = 1 / qFactor;
-        const resp = Math.exp(-Math.pow(Math.log2(ratio) / bw, 2));
-        totalGain += b.gain * resp;
-      } else if (b.type === 'lowshelf') {
-        if (f <= b.freq) totalGain += b.gain;
-        else if (f < b.freq * 2) totalGain += b.gain * (1 - (f - b.freq) / b.freq);
-      } else if (b.type === 'highshelf') {
-        if (f >= b.freq) totalGain += b.gain;
-        else if (f > b.freq / 2) totalGain += b.gain * ((f - b.freq / 2) / (b.freq / 2));
-      } else if (b.type === 'highpass') {
-        if (f < b.freq) totalGain -= Math.min(24, Math.log2(b.freq / f) * 12);
-      } else if (b.type === 'lowpass') {
-        if (f > b.freq) totalGain -= Math.min(24, Math.log2(f / b.freq) * 12);
-      } else if (b.type === 'notch') {
-        if (Math.abs(f - b.freq) < b.freq * 0.1) totalGain -= 24;
-      }
-    });
-
-    const y = gainToY(totalGain, h);
-    if (x === 0) ctx.moveTo(x, y);
-    else ctx.lineTo(x, y);
-  }
-  ctx.stroke();
-  ctx.shadowBlur = 0;
-
-  // 4. EQノード描画
-  const selectedId = isMic ? selectedMicBandId : selectedOutBandId;
-  bandsArray.forEach(b => {
-    const nx = freqToX(b.freq, w);
-    const ny = gainToY(b.gain, h);
-    const isSelected = (b.id === selectedId);
-
-    // Q幅のガイド円表示
-    if (isSelected) {
-      const qRadius = Math.max(12, Math.min(60, 40 / b.q));
-      ctx.beginPath();
-      ctx.arc(nx, ny, qRadius, 0, Math.PI * 2);
-      ctx.strokeStyle = 'rgba(168, 85, 247, 0.3)';
-      ctx.lineWidth = 1;
-      ctx.stroke();
-    }
-
-    // ノードの点
-    ctx.beginPath();
-    ctx.arc(nx, ny, isSelected ? 8 : 6, 0, Math.PI * 2);
-    ctx.fillStyle = isSelected ? '#f43f5e' : '#a855f7';
-    ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = 2;
-    ctx.fill();
-    ctx.stroke();
-
-    // バンド番号テキスト
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 9px Segoe UI, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(`${b.id}`, nx, ny);
-  });
-}
-
-// --------------------------------------------------------------------------
-// ★ VISUAL COMPRESSOR GRAPH & REALTIME NEON GR METER ★
-// --------------------------------------------------------------------------
-function drawCompressorGraph() {
-  const canvas = document.getElementById('canvas-comp-graph');
-  if (!canvas) return;
-  const ctx = canvas.getContext('2d');
-  const w = canvas.width;
-  const h = canvas.height;
-
-  ctx.clearRect(0, 0, w, h);
-
-  // グリッド線 (-60dB ~ 0dB)
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
-  ctx.lineWidth = 1;
-  for (let db = -60; db <= 0; db += 12) {
-    const x = ((db + 60) / 60) * w;
-    const y = h - ((db + 60) / 60) * h;
-
-    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
-
-    ctx.fillStyle = 'rgba(148, 163, 184, 0.4)';
-    ctx.font = '9px monospace';
-    ctx.fillText(`${db}dB`, x + 3, h - 5);
-  }
-
-  // 1:1 リニア対角線 (未圧縮時)
-  ctx.beginPath();
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
-  ctx.setLineDash([4, 4]);
-  ctx.moveTo(0, h);
-  ctx.lineTo(w, 0);
-  ctx.stroke();
-  ctx.setLineDash([]);
-
-  // コンプレッサー伝達関数 (折れ線)
-  const threshX = ((compParams.threshold + 60) / 60) * w;
-  const threshY = h - ((compParams.threshold + 60) / 60) * h;
-
-  // Threshold超過後の出力dB
-  const maxInDb = 0;
-  const maxOutDb = compParams.threshold + (maxInDb - compParams.threshold) / compParams.ratio;
-  const endX = w;
-  const endY = h - ((maxOutDb + 60) / 60) * h;
-
-  ctx.beginPath();
-  ctx.lineWidth = 3;
-  ctx.strokeStyle = compParams.enabled ? '#38bdf8' : '#64748b';
-  ctx.shadowColor = '#0284c7';
-  ctx.shadowBlur = 8;
-  ctx.moveTo(0, h);
-  ctx.lineTo(threshX, threshY);
-  ctx.lineTo(endX, endY);
-  ctx.stroke();
-  ctx.shadowBlur = 0;
-
-  // Threshold ノード
-  ctx.beginPath();
-  ctx.arc(threshX, threshY, 7, 0, Math.PI * 2);
-  ctx.fillStyle = '#38bdf8';
-  ctx.strokeStyle = '#ffffff';
-  ctx.lineWidth = 2;
-  ctx.fill();
-  ctx.stroke();
-}
-
-function drawGRMeter() {
-  const canvas = document.getElementById('canvas-gr-meter');
-  const txtVal = document.getElementById('txt-gr-val');
-  if (!canvas) return;
-  const ctx = canvas.getContext('2d');
-  const w = canvas.width;
-  const h = canvas.height;
-
-  ctx.clearRect(0, 0, w, h);
-
-  // 現在の Gain Reduction 値 (0dB ~ -24dB)
-  let grValue = 0;
-  if (micCompressorNode && compParams.enabled) {
-    grValue = Math.abs(micCompressorNode.reduction || 0);
-  }
-
-  if (txtVal) txtVal.textContent = `-${grValue.toFixed(1)} dB`;
-
-  // バックグラウンドスロット
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
-  ctx.fillRect(0, 0, w, h);
-
-  // ネオン縦型メーター (上から下へ伸びる)
-  const grRatio = Math.min(1.0, grValue / 24);
-  const barH = grRatio * h;
-
-  if (barH > 0) {
-    const grad = ctx.createLinearGradient(0, 0, 0, h);
-    grad.addColorStop(0, '#f43f5e');
-    grad.addColorStop(0.5, '#fb7185');
-    grad.addColorStop(1, '#e11d48');
-
-    ctx.fillStyle = grad;
-    ctx.shadowColor = '#f43f5e';
-    ctx.shadowBlur = 10;
-    ctx.fillRect(4, 0, w - 8, barH);
-    ctx.shadowBlur = 0;
-  }
-}
-
-// --------------------------------------------------------------------------
-// ★ UI BINDINGS: DYNAMIC BAND ADD/DELETE, SLIDERS, PRESETS ★
-// --------------------------------------------------------------------------
-function bindDSPControls() {
-  // 入出力オーディオデバイス切り替えリスナー
-  const selInputDev = document.getElementById('select-input-device');
-  const selHeadphonesDev = document.getElementById('select-out-headphones-device');
-  const selAuxDev = document.getElementById('select-out-aux-device');
-  const btnRefreshDevs = document.getElementById('btn-refresh-devices');
-
-  if (selInputDev) {
-    selInputDev.addEventListener('change', async () => {
-      await switchInputDevice(selInputDev.value);
-    });
-  }
-
-  if (selHeadphonesDev) {
-    selHeadphonesDev.addEventListener('change', async () => {
-      await switchOutputDevice(selHeadphonesDev.value);
-    });
-  }
-
-  if (selAuxDev) {
-    selAuxDev.addEventListener('change', async () => {
-      await switchOutputDevice(selAuxDev.value);
-    });
-  }
-
-  if (btnRefreshDevs) {
-    btnRefreshDevs.addEventListener('click', async () => {
-      await enumerateAudioDevices();
-    });
-  }
-
-  // Audio Output: Headphones ＆ Aux 2系統切り替えタブ
-  const tabHeadphones = document.getElementById('tab-out-headphones');
-  const tabAux = document.getElementById('tab-out-aux');
-  const containerHeadphones = document.getElementById('container-out-headphones');
-  const containerAux = document.getElementById('container-out-aux');
-
-  if (tabHeadphones && tabAux && containerHeadphones && containerAux) {
-    tabHeadphones.addEventListener('click', () => {
-      containerHeadphones.classList.remove('hidden');
-      containerAux.classList.add('hidden');
-      tabHeadphones.className = 'px-4 py-2 rounded-xl text-xs font-black bg-sky-600/30 border border-sky-500/50 text-white flex items-center space-x-2 transition-all';
-      tabAux.className = 'px-4 py-2 rounded-xl text-xs font-black bg-slate-900 border border-transparent text-slate-400 hover:text-white flex items-center space-x-2 transition-all';
-      setTimeout(resizeCanvases, 50);
-    });
-
-    tabAux.addEventListener('click', () => {
-      containerAux.classList.remove('hidden');
-      containerHeadphones.classList.add('hidden');
-      tabAux.className = 'px-4 py-2 rounded-xl text-xs font-black bg-purple-600/30 border border-purple-500/50 text-white flex items-center space-x-2 transition-all';
-      tabHeadphones.className = 'px-4 py-2 rounded-xl text-xs font-black bg-slate-900 border border-transparent text-slate-400 hover:text-white flex items-center space-x-2 transition-all';
-      setTimeout(resizeCanvases, 50);
-    });
-  }
-
-  // Mic EQ Dynamic Band Add / Delete
-  const btnMicAddBand = document.getElementById('btn-mic-eq-add-band');
-  const btnMicDelBand = document.getElementById('btn-mic-eq-delete-band');
-  const btnMicReset = document.getElementById('btn-mic-eq-reset');
-
-  if (btnMicAddBand) {
-    btnMicAddBand.addEventListener('click', () => {
-      const newId = nextMicBandId++;
-      micBands.push({ id: newId, type: 'peaking', freq: 2000, gain: 3, q: 1.0, node: null });
-      selectedMicBandId = newId;
-      rebuildMicEQChain();
-      if (micStream && sourceNode) connectMicDSPPipeline(sourceNode);
-    });
-  }
-
-  if (btnMicDelBand) {
-    btnMicDelBand.addEventListener('click', () => {
-      if (micBands.length <= 1) return; // 最低1バンドは保持
-      micBands = micBands.filter(b => b.id !== selectedMicBandId);
-      selectedMicBandId = micBands[0].id;
-      rebuildMicEQChain();
-      if (micStream && sourceNode) connectMicDSPPipeline(sourceNode);
-    });
-  }
-
-  if (btnMicReset) {
-    btnMicReset.addEventListener('click', () => {
-      micBands = [
-        { id: 1, type: 'lowshelf', freq: 100, gain: 0, q: 1.0, node: null },
-        { id: 2, type: 'peaking', freq: 500, gain: 0, q: 1.0, node: null },
-        { id: 3, type: 'peaking', freq: 1000, gain: 0, q: 1.0, node: null },
-        { id: 4, type: 'peaking', freq: 3000, gain: 0, q: 1.0, node: null },
-        { id: 5, type: 'highshelf', freq: 8000, gain: 0, q: 1.0, node: null }
-      ];
-      selectedMicBandId = 3;
-      macroBass = 0; macroClarity = 0; macroAir = 0;
-      rebuildMicEQChain();
-      if (micStream && sourceNode) connectMicDSPPipeline(sourceNode);
-    });
-  }
-
-  // Audio Output EQ Add / Delete / Reset
-  const btnOutAddBand = document.getElementById('btn-out-eq-add-band');
-  const btnOutDelBand = document.getElementById('btn-out-eq-delete-band');
-  const btnOutReset = document.getElementById('btn-out-eq-reset');
-
-  if (btnOutAddBand) {
-    btnOutAddBand.addEventListener('click', () => {
-      const newId = nextOutBandId++;
-      outBands.push({ id: newId, type: 'peaking', freq: 2000, gain: 3, q: 1.0, node: null });
-      selectedOutBandId = newId;
-      rebuildOutEQChain();
-    });
-  }
-
-  if (btnOutDelBand) {
-    btnOutDelBand.addEventListener('click', () => {
-      if (outBands.length <= 1) return;
-      outBands = outBands.filter(b => b.id !== selectedOutBandId);
-      selectedOutBandId = outBands[0].id;
-      rebuildOutEQChain();
-    });
-  }
-
-  if (btnOutReset) {
-    btnOutReset.addEventListener('click', () => {
-      outBands = [
-        { id: 1, type: 'lowshelf', freq: 80, gain: 0, q: 1.0, node: null },
-        { id: 2, type: 'peaking', freq: 250, gain: 0, q: 1.0, node: null },
-        { id: 3, type: 'peaking', freq: 1000, gain: 0, q: 1.0, node: null },
-        { id: 4, type: 'peaking', freq: 4000, gain: 0, q: 1.0, node: null },
-        { id: 5, type: 'highshelf', freq: 10000, gain: 0, q: 1.0, node: null }
-      ];
-      selectedOutBandId = 3;
-      rebuildOutEQChain();
-    });
-  }
-
-  // Filter Type Select Controls
-  const selMicType = document.getElementById('select-mic-band-type');
-  if (selMicType) {
-    selMicType.addEventListener('change', () => {
-      let b = micBands.find(x => x.id === selectedMicBandId);
-      if (b) {
-        b.type = selMicType.value;
-        if (b.node) b.node.type = b.type;
-      }
-    });
-  }
-
-  const selOutType = document.getElementById('select-out-band-type');
-  if (selOutType) {
-    selOutType.addEventListener('change', () => {
-      let b = outBands.find(x => x.id === selectedOutBandId);
-      if (b) {
-        b.type = selOutType.value;
-        if (b.node) b.node.type = b.type;
-      }
-    });
-  }
-
-  // Sliders: Mic Freq, Gain, Q
-  const sMicFreq = document.getElementById('slider-mic-freq');
-  const sMicGain = document.getElementById('slider-mic-gain');
-  const sMicQ = document.getElementById('slider-mic-q');
-
-  if (sMicFreq) sMicFreq.addEventListener('input', () => {
-    let b = micBands.find(x => x.id === selectedMicBandId);
-    if (b) { b.freq = parseFloat(sMicFreq.value); if (b.node) b.node.frequency.value = b.freq; }
-  });
-  if (sMicGain) sMicGain.addEventListener('input', () => {
-    let b = micBands.find(x => x.id === selectedMicBandId);
-    if (b) { b.gain = parseFloat(sMicGain.value); if (b.node) b.node.gain.value = b.gain; updateMacroEffects(); }
-  });
-  if (sMicQ) sMicQ.addEventListener('input', () => {
-    let b = micBands.find(x => x.id === selectedMicBandId);
-    if (b) { b.q = parseFloat(sMicQ.value); if (b.node) b.node.Q.value = b.q; }
-  });
-
-  // Macros Sliders
-  const sMacroBass = document.getElementById('slider-macro-bass');
-  const sMacroClarity = document.getElementById('slider-macro-clarity');
-  const sMacroAir = document.getElementById('slider-macro-air');
-  const txtBass = document.getElementById('txt-macro-bass');
-  const txtClarity = document.getElementById('txt-macro-clarity');
-  const txtAir = document.getElementById('txt-macro-air');
-
-  if (sMacroBass) sMacroBass.addEventListener('input', () => { macroBass = parseFloat(sMacroBass.value); if(txtBass) txtBass.textContent = `${macroBass>0?'+':''}${macroBass}dB`; updateMacroEffects(); });
-  if (sMacroClarity) sMacroClarity.addEventListener('input', () => { macroClarity = parseFloat(sMacroClarity.value); if(txtClarity) txtClarity.textContent = `${macroClarity>0?'+':''}${macroClarity}dB`; updateMacroEffects(); });
-  if (sMacroAir) sMacroAir.addEventListener('input', () => { macroAir = parseFloat(sMacroAir.value); if(txtAir) txtAir.textContent = `${macroAir>0?'+':''}${macroAir}dB`; updateMacroEffects(); });
-
-  // Compressor Controls
-  const toggleCompEnable = document.getElementById('toggle-comp-enable');
-  const sThresh = document.getElementById('slider-comp-thresh');
-  const sRatio = document.getElementById('slider-comp-ratio');
-  const sAttack = document.getElementById('slider-comp-attack');
-  const sRelease = document.getElementById('slider-comp-release');
-  const sMakeup = document.getElementById('slider-comp-makeup');
-  const toggleAutoGain = document.getElementById('toggle-comp-autogain');
-
-  if (toggleCompEnable) toggleCompEnable.addEventListener('change', () => {
-    compParams.enabled = toggleCompEnable.checked;
-    if (micStream && sourceNode) connectMicDSPPipeline(sourceNode);
-  });
-  if (sThresh) sThresh.addEventListener('input', () => { compParams.threshold = parseFloat(sThresh.value); document.getElementById('txt-comp-thresh').textContent = `${compParams.threshold}dB`; applyCompressorParams(); });
-  if (sRatio) sRatio.addEventListener('input', () => { compParams.ratio = parseFloat(sRatio.value); document.getElementById('txt-comp-ratio').textContent = `${compParams.ratio}:1`; applyCompressorParams(); });
-  if (sAttack) sAttack.addEventListener('input', () => { compParams.attack = parseFloat(sAttack.value) / 1000; document.getElementById('txt-comp-attack').textContent = `${sAttack.value}ms`; applyCompressorParams(); });
-  if (sRelease) sRelease.addEventListener('input', () => { compParams.release = parseFloat(sRelease.value) / 1000; document.getElementById('txt-comp-release').textContent = `${sRelease.value}ms`; applyCompressorParams(); });
-  if (sMakeup) sMakeup.addEventListener('input', () => { compParams.makeup = parseFloat(sMakeup.value); document.getElementById('txt-comp-makeup').textContent = `+${compParams.makeup}dB`; applyCompressorParams(); });
-  if (toggleAutoGain) toggleAutoGain.addEventListener('change', () => { compParams.autoGain = toggleAutoGain.checked; applyCompressorParams(); });
-
-  // Audio Output Presets
-  const btnFlat = document.getElementById('btn-preset-flat');
-  const btnFps = document.getElementById('btn-preset-fps');
-  const btnMusic = document.getElementById('btn-preset-music');
-  const btnMovie = document.getElementById('btn-preset-movie');
-
-  function applyPreset(presetBands, activeBtn) {
-    outBands = JSON.parse(JSON.stringify(presetBands));
-    selectedOutBandId = outBands[0].id;
-    rebuildOutEQChain();
-
-    [btnFlat, btnFps, btnMusic, btnMovie].forEach(b => {
-      if (b) b.className = 'px-3 py-1.5 rounded-lg text-xs font-bold text-slate-400 hover:text-white transition-all';
-    });
-    if (activeBtn) activeBtn.className = 'px-3 py-1.5 rounded-lg text-xs font-bold text-white bg-purple-600 transition-all';
-  }
-
-  if (btnFlat) btnFlat.addEventListener('click', () => applyPreset([
-    { id: 1, type: 'lowshelf', freq: 80, gain: 0, q: 1.0, node: null },
-    { id: 2, type: 'peaking', freq: 250, gain: 0, q: 1.0, node: null },
-    { id: 3, type: 'peaking', freq: 1000, gain: 0, q: 1.0, node: null },
-    { id: 4, type: 'peaking', freq: 4000, gain: 0, q: 1.0, node: null },
-    { id: 5, type: 'highshelf', freq: 10000, gain: 0, q: 1.0, node: null }
-  ], btnFlat));
-
-  if (btnFps) btnFps.addEventListener('click', () => applyPreset([
-    { id: 1, type: 'highpass', freq: 60, gain: 0, q: 1.0, node: null },
-    { id: 2, type: 'peaking', freq: 150, gain: -3, q: 1.0, node: null },
-    { id: 3, type: 'peaking', freq: 400, gain: 4, q: 1.4, node: null }, // 足音強調
-    { id: 4, type: 'peaking', freq: 2500, gain: 5, q: 1.2, node: null }, // 銃声・環境音
-    { id: 5, type: 'highshelf', freq: 8000, gain: 2, q: 1.0, node: null }
-  ], btnFps));
-
-  if (btnMusic) btnMusic.addEventListener('click', () => applyPreset([
-    { id: 1, type: 'lowshelf', freq: 100, gain: 4.5, q: 1.0, node: null }, // ドンシャリ重低音
-    { id: 2, type: 'peaking', freq: 300, gain: -1.5, q: 1.0, node: null },
-    { id: 3, type: 'peaking', freq: 1200, gain: 1, q: 1.0, node: null },
-    { id: 4, type: 'peaking', freq: 3500, gain: 2, q: 1.0, node: null },
-    { id: 5, type: 'highshelf', freq: 10000, gain: 4, q: 1.0, node: null } // 透過高域
-  ], btnMusic));
-
-  if (btnMovie) btnMovie.addEventListener('click', () => applyPreset([
-    { id: 1, type: 'lowshelf', freq: 80, gain: 3, q: 1.0, node: null },
-    { id: 2, type: 'peaking', freq: 250, gain: -2, q: 1.0, node: null },
-    { id: 3, type: 'peaking', freq: 2000, gain: 4, q: 1.2, node: null }, // セリフ強調
-    { id: 4, type: 'peaking', freq: 5000, gain: 1, q: 1.0, node: null },
-    { id: 5, type: 'highshelf', freq: 12000, gain: 2, q: 1.0, node: null }
-  ], btnMovie));
-
-  // EQ Canvas 相互ドラッグイベント登録
-  setupEQCanvasInteraction('canvas-eq-mic', micBands, true);
-  setupEQCanvasInteraction('canvas-eq-out', outBands, false);
-}
-
-// キャンバスリサイズ処理の拡張
-const oldResizeCanvases = resizeCanvases;
-resizeCanvases = function() {
-  if (typeof oldResizeCanvases === 'function') oldResizeCanvases();
-
-  ['canvas-eq-mic', 'canvas-eq-out', 'canvas-comp-graph', 'canvas-gr-meter'].forEach(id => {
-    const cvs = document.getElementById(id);
-    if (cvs && cvs.parentElement) {
-      cvs.width = cvs.parentElement.clientWidth;
-      cvs.height = cvs.parentElement.clientHeight;
-    }
-  });
-};
 
 // --------------------------------------------------------------------------
 // メイン更新ループ (90 FPS 固定レート制御)
@@ -2094,12 +1173,6 @@ function updateLoop(timestamp) {
     drawSpectrogram(1.5);
     drawPitchTracker(1.5);
     drawSpectrum();
-
-    // DSP (EQ & Compressor & GR Meter) 描画
-    drawEQCanvas('canvas-eq-mic', micBands, true);
-    drawEQCanvas('canvas-eq-out', outBands, false);
-    drawCompressorGraph();
-    drawGRMeter();
   }
 }
 
@@ -2107,7 +1180,6 @@ function updateLoop(timestamp) {
 window.addEventListener('DOMContentLoaded', async () => {
   resizeCanvases();
   setupUIEvents();
-  bindDSPControls();
   await startAudioStream();
   requestAnimationFrame(updateLoop);
 });
